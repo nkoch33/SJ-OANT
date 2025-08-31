@@ -1,9 +1,9 @@
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END # type: ignore
 from typing import TypedDict, List, Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
+from langchain_core.prompts import ChatPromptTemplate # type: ignore
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 
 # ---- Define State ----
 class MemoryState(TypedDict):

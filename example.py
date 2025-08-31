@@ -1,15 +1,15 @@
 from typing import Annotated, Literal
-from typing_extensions import TypedDict
-from langgraph.graph import StateGraph
-from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
-from langchain_core.tools import tool
-from langgraph.prebuilt import ToolNode
+from typing_extensions import TypedDict # type: ignore
+from langgraph.graph import StateGraph # type: ignore
+from langgraph.graph.message import add_messages # type: ignore
+from langgraph.prebuilt import ToolNode # type: ignore
+from langchain_core.tools import tool # type: ignore
+from langgraph.prebuilt import ToolNode # type: ignore
 # --- CHANGE 1: Import the Google Gemini chat model ---
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
+from langchain_core.messages import HumanMessage # type: ignore
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 import os
 
 load_dotenv()
