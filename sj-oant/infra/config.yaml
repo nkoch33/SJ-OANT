@@ -1,0 +1,140 @@
+# config.yaml - TMM System Configuration
+
+# Truth-Maintained Memory (TMM) System Configuration
+# This file contains all configuration parameters for the TMM system
+# including model settings, evaluation parameters, and infrastructure options
+
+# Model Configuration
+models:
+  # Model backbones for evaluation
+  small_models:
+    - name: "llama2-7b"
+      path: "meta-llama/Llama-2-7b-hf"
+      quantization: "4bit"
+    - name: "mistral-7b"
+      path: "mistralai/Mistral-7B-v0.1"
+      quantization: "4bit"
+  
+  medium_models:
+    - name: "llama2-13b"
+      path: "meta-llama/Llama-2-13b-hf"
+      quantization: "8bit"
+  
+  large_models:
+    - name: "llama2-70b"
+      path: "meta-llama/Llama-2-70b-hf"
+      quantization: "8bit"
+
+# TMM Architecture Configuration
+tmm_config:
+  # Truth Filter Settings
+  truth_filter:
+    enabled: true
+    token_threshold: 0.5
+    span_threshold: 0.7
+    adaptive_thresholds: true
+  
+  # Verifier Settings
+  verifier:
+    enabled: true
+    confidence_threshold: 0.8
+    contradiction_threshold: 0.3
+    calibration_method: "temperature_scaling"
+  
+  # Memory Policies
+  memory_policies:
+    selective_addition:
+      trust_threshold: 0.85
+      utility_threshold: 0.7
+    combined_deletion:
+      periodic_cleanup: true
+      cleanup_interval: 50  # turns
+      low_utility_threshold: 0.3
+  
+  # Voting System
+  voting:
+    enabled: true
+    num_micro_agents: 5
+    consensus_threshold: 0.6
+    tie_breaking: "confidence_weighted"
+
+# FABLE Benchmark Configuration
+fable_config:
+  # Scenario Settings
+  scenarios:
+    easy_tier: 50
+    medium_tier: 100
+    hard_tier: 50
+    forensics_tier: 25
+  
+  # Evaluation Settings
+  evaluation:
+    num_runs: 3
+    random_seeds: [42, 123, 456]
+    timeout_per_scenario: 300  # seconds
+  
+  # Metrics Configuration
+  metrics:
+    fmr:
+      enabled: true
+      confidence_weighting: true
+    mel:
+      enabled: true
+      max_latency_turns: 20
+    dar:
+      enabled: true
+      perturbation_rates: [0.1, 0.2, 0.5]
+    accuracy:
+      enabled: true
+      task_families: ["AR", "TTL", "LRU", "CR"]
+
+# Infrastructure Configuration
+infrastructure:
+  # vLLM Server Settings
+  vllm:
+    host: "localhost"
+    port: 8000
+    max_parallel_requests: 32
+    enable_paged_attention: true
+    enable_kv_cache: true
+  
+  # Compute Resources
+  compute:
+    gpu_devices: ["cuda:0", "cuda:1"]
+    max_memory_per_gpu: "80GB"
+    batch_size: 8
+    max_context_length: 32768
+  
+  # Storage and Logging
+  storage:
+    results_dir: "./results"
+    cache_dir: "./cache"
+    log_level: "INFO"
+    save_intermediate: true
+
+# Experimental Settings
+experiments:
+  # E-suite Configuration (E1-E6)
+  e1_baselines_vs_tmm:
+    enabled: true
+    baselines: ["long_context", "rag_bm25", "rag_dense", "agentic_no_gates"]
+  
+  e2_error_propagation:
+    enabled: true
+    seeded_error_rates: [0.05, 0.1, 0.2]
+  
+  e3_budget_shift:
+    enabled: true
+    memory_caps: ["1MB", "10MB", "100MB"]
+  
+  e4_multi_agent_gains:
+    enabled: true
+    agent_configurations: ["single", "voting_3", "voting_5", "voting_7"]
+  
+  e5_truth_filter_efficacy:
+    enabled: true
+    adversarial_context_rates: [0.1, 0.3, 0.5]
+  
+  e6_verifier_study:
+    enabled: true
+    threshold_sweep: [0.5, 0.6, 0.7, 0.8, 0.9]
