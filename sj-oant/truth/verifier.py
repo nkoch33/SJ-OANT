@@ -1,8 +1,8 @@
 """
-truth.verifier - Enterprise Truth Verification and Confidence Scoring
+truth.verifier - Truth Verification and Confidence Scoring
 
 This module provides production-grade truth verification capabilities for the TMM system,
-implementing clean interfaces, comprehensive error handling, and enterprise-quality logging.
+implementing clean interfaces, comprehensive error handling, and high-quality logging.
 
 Design Features:
 - Protocol-based interfaces for pluggable verification strategies

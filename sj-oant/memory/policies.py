@@ -1,8 +1,8 @@
 """
-memory.policies - Enterprise Memory Management Policies
+memory.policies - Memory Management Policies
 
 This module implements production-grade memory management policies for the TMM system,
-following enterprise patterns with comprehensive logging, metrics, and configurability.
+following clean architecture patterns with comprehensive logging, metrics, and configurability.
 
 Design Features:
 - Configurable thresholds and parameters

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Enterprise TMM Architecture Demonstration
+TMM Architecture Demonstration
 
 This script demonstrates the clean, modular architecture of the TMM system
 with proper dependency injection, comprehensive error handling, and
-enterprise-quality logging.
+production-quality logging.
 
 Usage:
-    python demo_enterprise_architecture.py
+    python demo_architecture.py
 """
 
 import logging
@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 def main():
     """
-    Demonstrate the enterprise TMM architecture with clean interfaces
+    Demonstrate the TMM architecture with clean interfaces
     and dependency injection patterns.
     """
-    logger.info("🚀 Starting TMM Enterprise Architecture Demonstration")
+    logger.info("🚀 Starting TMM Architecture Demonstration")
     
     try:
         # Import core components
@@ -219,11 +219,11 @@ def main():
         except Exception as e:
             logger.info(f"✅ Correctly caught verification error: {e}")
         
-        logger.info("🎉 TMM Enterprise Architecture demonstration completed successfully!")
+        logger.info("🎉 TMM Architecture demonstration completed successfully!")
         
         # Print summary
         print("\n" + "="*60)
-        print("🏆 TMM ENTERPRISE ARCHITECTURE DEMONSTRATION SUMMARY")
+        print("🏆 TMM ARCHITECTURE DEMONSTRATION SUMMARY")
         print("="*60)
         print(f"📦 Memory Records Stored: {memory_metrics.get('total_records', 0)}")
         print(f"⚖️ Policy Decisions Made: {policy_metrics['selective_addition']['total_decisions']}")

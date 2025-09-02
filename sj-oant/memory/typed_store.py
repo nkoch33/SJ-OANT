@@ -1,8 +1,8 @@
 """
-memory.typed_store - Enterprise-Grade Multi-Tiered Memory Storage
+memory.typed_store - Multi-Tiered Memory Storage
 
 This module implements a production-ready, thread-safe memory storage system
-following enterprise patterns with comprehensive logging, metrics, and error handling.
+following clean architecture patterns with comprehensive logging, metrics, and error handling.
 
 The implementation follows hexagonal architecture principles with clear separation
 between domain logic and infrastructure concerns, enabling easy testing and

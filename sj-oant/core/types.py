@@ -2,7 +2,7 @@
 core.types - Core Data Types and Structures
 
 This module defines the foundational data types used throughout the TMM system.
-Following enterprise patterns with immutable dataclasses, comprehensive typing,
+Following clean architecture patterns with immutable dataclasses, comprehensive typing,
 and clear separation of concerns.
 
 Design Principles:
