@@ -83,6 +83,37 @@ class RuleBasedVerifier(BaseVerifier):
         logger.info(f"Initialized RuleBasedVerifier with weights: "
                    f"evidence={evidence_weight}, consistency={consistency_weight}, source={source_weight}")
     
+    def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute verification on pipeline state for LangGraph compatibility."""
+        try:
+            content = state.get("user_input", "")
+            if not content:
+                # Return state unchanged if no content to verify
+                return state
+            
+            # Verify the content
+            scores = self.verify(content, context=state)
+            
+            # Add verification results to state
+            state["verification_scores"] = {
+                "truth_score": scores.truth_score,
+                "confidence": scores.confidence,
+                "evidentiality": scores.evidentiality,
+                "relevance": scores.relevance,
+                "utility": scores.utility,
+                "source_credibility": scores.source_credibility
+            }
+            state["verification_passed"] = scores.confidence >= 0.6
+            
+            return state
+            
+        except Exception as e:
+            logger.error(f"Verification execution failed: {e}")
+            # Return state with failed verification
+            state["verification_scores"] = {"error": str(e)}
+            state["verification_passed"] = False
+            return state
+    
     def verify(self, content: str, context: Optional[Dict[str, Any]] = None) -> ConfidenceScores:
         """
         Verify content using rule-based analysis.

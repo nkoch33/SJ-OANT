@@ -198,24 +198,54 @@ class TMMPipeline:
     
     def _response_generation_node(self, state: MemoryState) -> MemoryState:
         """
-        Pipeline node for response generation.
+        Pipeline node for response generation with memory retrieval.
         
         Args:
             state: Current memory state
             
         Returns:
-            Final memory state (unchanged, as this is the end)
+            Final memory state with LLM-generated response based on retrieved memory
         """
         try:
-            # Simple response generation for now
-            response = self.responder.respond(
-                query=state.get("user_input", ""),
-                context={"memory_state": state}
-            )
+            # Get stored memory from memory store
+            stored_memory = self.memory_store.search("", limit=10)  # Get all recent memory
+            
+            # Convert memory records to context strings
+            memory_context = []
+            for record in stored_memory:
+                memory_context.append(record.payload)
+            
+            # Use LLM with retrieved memory context  
+            from langchain_core.prompts import ChatPromptTemplate
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful assistant. Use the provided context to answer the user's question. Answer directly and concisely."),
+                ("user", "Context: {context}\n\nQuestion: {question}")
+            ])
+            
+            chain = prompt | self.llm
+            context_text = "\n".join(memory_context) if memory_context else "No context available"
+            
+            print(f"🔍 Context being used: {context_text[:200]}...")
+            print(f"❓ Question: {state.get('user_input', '')}")
+            
+            try:
+                result = chain.invoke({
+                    "context": context_text,
+                    "question": state.get("user_input", "")
+                })
+                response = result.content if hasattr(result, 'content') else str(result)
+                print(f"🤖 LLM Response: {response}")
+            except Exception as llm_error:
+                print(f"❌ LLM Error: {llm_error}")
+                response = f"LLM Error: {str(llm_error)}"
+            
             state["final_response"] = response
+            print(f"💬 Generated LLM response based on {len(memory_context)} memory records")
             return state
         except Exception as e:
             print(f"Error in response generation: {e}")
+            # Fallback to simple response
+            state["final_response"] = "I apologize, but I encountered an error processing your request."
             return state
     
     def process(self, user_input: str) -> str:
@@ -308,9 +338,9 @@ def create_tmm_pipeline(google_api_key: str = None, config: Dict[str, Any] = Non
     if not api_key:
         raise ValueError("Google API key must be provided or set in GOOGLE_API_KEY environment variable")
     
-    # Initialize LLM (matching original agent.py configuration)
+    # Initialize LLM with current model
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-1.5-flash",
         temperature=0.1,
         google_api_key=api_key
     )

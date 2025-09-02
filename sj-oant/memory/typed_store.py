@@ -21,7 +21,8 @@ import logging
 import threading
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
+from core.types import ConfidenceScores
 from uuid import UUID
 
 from core.ports import BaseMemoryStore, FilterCriteria, SearchError, StorageError
@@ -88,6 +89,76 @@ class InMemoryStore(BaseMemoryStore):
             f"Initialized InMemoryStore with limits: "
             f"L1={l1_limit}, L2={l2_limit}, L3={l3_limit}, Flagged={flagged_limit}"
         )
+    
+    @property 
+    def _records(self):
+        """Legacy property access to records for compatibility."""
+        return self.records
+    
+    def get_state(self) -> "MemoryState":
+        """Get current memory state for LangGraph compatibility."""
+        with self._lock:
+            return {
+                "L1": [r for r in self.records.values() if r.tier == MemoryTier.L1_WORKING],
+                "L2": [r for r in self.records.values() if r.tier == MemoryTier.L2_SUMMARIZED],  
+                "L3": [r for r in self.records.values() if r.tier == MemoryTier.L3_ARCHIVAL],
+                "flagged": [r for r in self.records.values() if r.tier == MemoryTier.FLAGGED],
+                "user_input": "",
+                "final_response": ""
+            }
+    
+    def add_to_l1(self, content: str, scores: Optional[ConfidenceScores] = None, **kwargs) -> RecordID:
+        """Add content directly to L1 working memory."""
+        from core.types import MemoryRecord, ConfidenceScores, Provenance
+        from uuid import uuid4
+        from datetime import datetime, timezone
+        
+        if scores is None:
+            scores = ConfidenceScores()
+        
+        record = MemoryRecord(
+            id=uuid4(),
+            payload=content,
+            tier=MemoryTier.L1_WORKING,
+            status=MemoryStatus.PENDING,
+            scores=scores,
+            provenance=Provenance(
+                source="direct_add",
+                source_type="system",
+                pipeline_stage="memory_store",
+                processing_agent="InMemoryStore"
+            ),
+            **kwargs
+        )
+        return self.add(record)
+    
+    def add_to_flagged(self, content: str, reason: str, metadata: Dict[str, Any] = None) -> RecordID:
+        """Add content to flagged memory tier."""
+        from core.types import MemoryRecord, ConfidenceScores, Provenance
+        from uuid import uuid4
+        from datetime import datetime, timezone
+        
+        if metadata is None:
+            metadata = {}
+        
+        # Add flagging information to metadata
+        metadata.update({"flag_reason": reason, "flagged_at": datetime.now(timezone.utc).isoformat()})
+        
+        record = MemoryRecord(
+            id=uuid4(),
+            payload=content,
+            tier=MemoryTier.FLAGGED,
+            status=MemoryStatus.FLAGGED,
+            scores=ConfidenceScores(confidence=0.1, truth_score=0.1),  # Low scores for flagged content
+            provenance=Provenance(
+                source="flagged_content",
+                source_type="system",
+                pipeline_stage="memory_curation",
+                processing_agent="MemoryCurationAgent",
+                metadata=metadata
+            )
+        )
+        return self.add(record)
     
     def add(self, record: MemoryRecord) -> RecordID:
         """

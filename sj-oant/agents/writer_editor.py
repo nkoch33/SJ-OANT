@@ -127,10 +127,18 @@ class MemoryCurationAgent:
         
         if target_tier == "flagged":
             reason = decision.get("reason", "Unknown")
-            self.memory_store.add_to_flagged(content, reason, metadata=metadata)
+            self.memory_store.add_to_flagged(content, reason)
         elif target_tier == "L1":
+            # Create proper ConfidenceScores object
+            from core.types import ConfidenceScores
             confidence = metadata.get("confidence", 0.7)
-            self.memory_store.add_to_l1(content, confidence=confidence, metadata=metadata)
+            scores = ConfidenceScores(
+                truth_score=confidence,
+                confidence=confidence,
+                evidentiality=confidence
+            )
+            # Don't pass metadata as a separate argument since it may conflict with MemoryRecord
+            self.memory_store.add_to_l1(content, scores=scores)
         # TODO: Add direct L2/L3 addition methods to TypedMemoryStore
         
         print(f"   Stored to {target_tier}: {content[:50]}...")

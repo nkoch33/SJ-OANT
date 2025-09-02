@@ -59,7 +59,7 @@ class ResponseType(Enum):
     FALLBACK = "fallback"             # Error or limitation responses
 
 
-@dataclass(frozen=True)
+@dataclass
 class ResponseCandidate:
     """
     Immutable container for response generation candidates.
