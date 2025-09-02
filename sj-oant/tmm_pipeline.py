@@ -22,12 +22,12 @@ import os
 from dotenv import load_dotenv
 
 # Import TMM components
-from memory.typed_store import MemoryState, TypedMemoryStore
+from memory.typed_store import MemoryState, InMemoryStore
 from agents.planner import StrategicPlanner
 from truth.tacs_filter import TACSFilter
-from truth.verifier import TruthVerifier
+from truth.verifier import create_verifier
 from agents.writer_editor import WriterEditor
-from agents.responder import TMMResponder
+from agents.responder import Responder
 
 
 class TMMPipeline:
@@ -51,11 +51,7 @@ class TMMPipeline:
         self.config = config or self._default_config()
         
         # Initialize memory store
-        self.memory_store = TypedMemoryStore(
-            l1_limit=self.config.get("l1_limit", 10),
-            l2_limit=self.config.get("l2_limit", 20),
-            l3_limit=self.config.get("l3_limit", 100)
-        )
+        self.memory_store = InMemoryStore()
         
         # Initialize all TMM components
         self.strategic_planner = StrategicPlanner()
@@ -66,13 +62,12 @@ class TMMPipeline:
             relevance_threshold=self.config.get("relevance_threshold", 0.5)
         )
         
-        self.truth_verifier = TruthVerifier(
-            llm,
-            confidence_threshold=self.config.get("confidence_threshold", 0.8)
+        self.truth_verifier = create_verifier(
+            verifier_type="rule_based"
         )
         
         self.writer_editor = WriterEditor(llm, self.memory_store)
-        self.tmm_responder = TMMResponder(llm)
+        self.responder = Responder()
         
         # Build the LangGraph pipeline
         self.graph = self._build_graph()
@@ -212,31 +207,41 @@ class TMMPipeline:
             Final memory state (unchanged, as this is the end)
         """
         try:
-            return self.tmm_responder.execute(state)
+            # Simple response generation for now
+            response = self.responder.respond(
+                query=state.get("user_input", ""),
+                context={"memory_state": state}
+            )
+            state["final_response"] = response
+            return state
         except Exception as e:
             print(f"Error in response generation: {e}")
             return state
     
-    def process(self, user_input: str) -> Dict[str, Any]:
+    def process(self, user_input: str) -> str:
         """
         Process a user input through the complete TMM pipeline.
         
-        This is the main interface that recreates the functionality
-        from the original agent.py main() function.
+        This is the main interface for the FictionalQA evaluation.
         
         Args:
             user_input: Raw user input string
             
         Returns:
-            Dict with processing results and final response
+            Final response string
         """
         print("=" * 60)
         print("🧠 Truth-Maintained Memory Pipeline")
         print("=" * 60)
         
         # Create initial state
-        initial_state = self.memory_store.get_state()
-        initial_state["user_input"] = user_input
+        initial_state = {
+            "user_input": user_input,
+            "L1": [],
+            "L2": [],
+            "L3": [],
+            "flagged": []
+        }
         
         print(f"Processing input: {user_input}")
         print(f"Initial memory state: L1={len(initial_state['L1'])}, "
@@ -247,31 +252,17 @@ class TMMPipeline:
         try:
             final_state = self.graph.invoke(initial_state)
             
-            # Get memory summary
-            memory_summary = self.memory_store.get_memory_summary()
-            
             print("=" * 60)
             print("✅ Pipeline completed successfully!")
-            print(f"Final memory state: L1={memory_summary['tier_sizes']['L1']}, "
-                  f"L2={memory_summary['tier_sizes']['L2']}, "
-                  f"L3={memory_summary['tier_sizes']['L3']}, "
-                  f"Flagged={memory_summary['tier_sizes']['flagged']}")
             print("=" * 60)
             
-            return {
-                "success": True,
-                "final_state": final_state,
-                "memory_summary": memory_summary,
-                "user_input": user_input
-            }
+            # Return the final response
+            return final_state.get("final_response", "No response generated")
             
         except Exception as e:
             print(f"❌ Pipeline error: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "user_input": user_input
-            }
+            # For evaluation, return an error response that can be evaluated
+            return f"Error: {str(e)}"
     
     def get_memory_summary(self) -> Dict[str, Any]:
         """
@@ -280,17 +271,16 @@ class TMMPipeline:
         Returns:
             Memory summary with tier sizes and statistics
         """
-        return self.memory_store.get_memory_summary()
+        try:
+            return self.memory_store.get_metrics()
+        except AttributeError:
+            return {"total_records": 0, "tier_sizes": {"L1": 0, "L2": 0, "L3": 0, "flagged": 0}}
     
     def reset_memory(self) -> None:
         """
         Reset the memory store to empty state.
         """
-        self.memory_store = TypedMemoryStore(
-            l1_limit=self.config.get("l1_limit", 10),
-            l2_limit=self.config.get("l2_limit", 20),
-            l3_limit=self.config.get("l3_limit", 100)
-        )
+        self.memory_store = InMemoryStore()
         # Reinitialize writer_editor with new memory store
         self.writer_editor = WriterEditor(self.llm, self.memory_store)
         

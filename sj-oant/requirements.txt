@@ -27,8 +27,9 @@ seaborn>=0.12.0
 # Model serving (for vLLM integration)
 # vllm>=0.3.0  # Uncomment when ready for model serving
 
-# HuggingFace transformers for model loading
+# HuggingFace transformers and datasets for model loading and data access
 transformers>=4.35.0
+datasets>=2.15.0
 torch>=2.0.0
 
 # Configuration management
