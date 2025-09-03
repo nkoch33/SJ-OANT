@@ -2,7 +2,7 @@
 
 A novel multi-agent architecture for preventing false memory formation in Large Language Model agents through proactive context filtering, truth verification, and memory curation.
 
-## 🧠 Core Innovation
+##  Core Innovation
 
 The TMM system addresses false memory accumulation in conversational AI by implementing:
 
@@ -11,7 +11,7 @@ The TMM system addresses false memory accumulation in conversational AI by imple
 - **Memory Curation** with selective addition and deletion policies
 - **Multi-Tiered Memory** (L1: Working, L2: Summarized, L3: Archival, Flagged)
 
-## 🏗 Architecture
+##  Architecture
 
 ### Multi-Agent Pipeline (LangGraph)
 ```
@@ -26,13 +26,13 @@ User Input → Strategic Planner → TACS Filter → Truth Verifier → Memory C
 - **`truth/`** - Verification and filtering systems
 - **`retrieval/`** - Hybrid and active retrieval mechanisms
 
-## 📊 Evaluation Framework
+##  Evaluation Framework
 
 - **SQuAD Dataset**: 10,570 question-answering examples
 - **Baseline Comparisons**: DirectLLM, LongContext, SimpleRAG, BasicMemory
 - **Comprehensive Metrics**: Accuracy, latency, memory efficiency
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Setup
 ```bash
@@ -55,9 +55,9 @@ python runners/eval_squad2.py --api-key "YOUR_API_KEY" --limit 50
 python scripts/analyze_results.py
 ```
 
-## ⚡ Current Status
+##  Current Status
 
-### ✅ Research-Ready System
+###  Research-Ready System
 - [x] Complete multi-agent architecture implemented
 - [x] Memory storage and retrieval systems working
 - [x] Truth verification pipeline operational
@@ -65,17 +65,17 @@ python scripts/analyze_results.py
 - [x] Baseline comparison systems validated
 - [x] Results analysis and visualization ready
 
-### 🎯 Only Requirement: API Access
+###  Only Requirement: API Access
 The system is **fully functional** and requires only:
 - **Google Gemini API Key** with sufficient quota (>50 requests/day)
 - **Optional**: Cloud compute for large-scale evaluations
 
-### �� Proven Performance
+###  Proven Performance
 - **Baseline Systems**: 100% accuracy on SQuAD validation samples
 - **TMM System**: Memory storage, retrieval, and LLM integration confirmed working
 - **Architecture**: Supports 1000+ evaluation examples
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 sj-oant/
@@ -94,7 +94,7 @@ sj-oant/
 └── notebooks/              # Analysis and visualization
 ```
 
-## 🔬 Research Impact
+##  Research Impact
 
 ### Problem Addressed
 LLMs suffer from false memory accumulation in conversations, leading to:
