@@ -114,7 +114,8 @@ python scripts/setup_api_key.py "YOUR_GOOGLE_API_KEY"
 ### File Structure
 ```
 results/
-├── squad_evaluation_results.json       # Raw evaluation data
+├── squad2_evaluation_results.json      # SQuAD 2.0 evaluation data
+├── multiturn_evaluation_results.json   # Multi-turn conversation data
 ├── results_summary.csv                 # Processed metrics
 ├── performance_comparison.png          # Visualization
 └── evaluation_logs/                    # Detailed logs
@@ -167,12 +168,12 @@ python scripts/preflight_check.py
 
 ### 2. Small Test Run
 ```bash
-python runners/eval_squad.py --api-key "YOUR_API_KEY" --limit 5
+python runners/eval_squad2.py --api-key "YOUR_API_KEY" --limit 5
 ```
 
 ### 3. Full Evaluation
 ```bash
-python runners/eval_squad.py --api-key "YOUR_API_KEY" --limit 100
+python runners/eval_squad2.py --api-key "YOUR_API_KEY" --limit 100
 ```
 
 ### 4. Analyze Results
@@ -189,7 +190,7 @@ SQUAD EVALUATION RESULTS
 ============================================================
 [Results will appear here after running evaluation]
 
-python runners/eval_squad.py --api-key "YOUR_API_KEY" --limit 50
+python runners/eval_squad2.py --api-key "YOUR_API_KEY" --limit 50
 ```
 
 ### Generated Files

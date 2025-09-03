@@ -528,6 +528,19 @@ class InMemoryStore(BaseMemoryStore):
                 **status_counts
             }
     
+    def get_memory_summary(self) -> Dict[str, Any]:
+        """Get memory summary in expected format for writer_editor compatibility."""
+        metrics = self.get_metrics()
+        return {
+            "total_records": metrics.get("total_records", 0),
+            "tier_sizes": {
+                "L1": metrics.get("tier_l1_working_count", 0),
+                "L2": metrics.get("tier_l2_summarized_count", 0), 
+                "L3": metrics.get("tier_l3_archival_count", 0),
+                "flagged": metrics.get("tier_flagged_count", 0)
+            }
+        }
+    
     def _apply_filters(self, 
                       candidate_ids: Set[RecordID], 
                       filters: FilterCriteria) -> Set[RecordID]:
@@ -591,14 +604,35 @@ class InMemoryStore(BaseMemoryStore):
     def _apply_text_search(self, 
                           candidate_ids: Set[RecordID], 
                           query: str) -> Set[RecordID]:
-        """Apply text-based search to candidate record IDs."""
+        """Apply text-based search to candidate record IDs with semantic matching."""
         query_lower = query.lower()
+        query_words = set(query_lower.split())
         
-        return {
-            rid for rid in candidate_ids
-            if rid in self.records and
-            query_lower in self.records[rid].payload.lower()
-        }
+        # Remove stop words for better matching
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'what', 'where', 'when', 'who', 'how', 'which'}
+        meaningful_query_words = query_words - stop_words
+        
+        matching_ids = set()
+        
+        for rid in candidate_ids:
+            if rid in self.records:
+                record = self.records[rid]
+                payload_lower = record.payload.lower()
+                payload_words = set(payload_lower.split())
+                
+                # Calculate word overlap
+                overlap = len(meaningful_query_words & payload_words)
+                
+                # Include record if:
+                # 1. Has meaningful word overlap, OR
+                # 2. Is substantial content (likely stored context), OR  
+                # 3. Contains exact query substring (original behavior)
+                if (overlap >= 1 or  # At least 1 meaningful word overlap
+                    len(record.payload) > 100 or  # Substantial content (context)
+                    query_lower in payload_lower):  # Exact substring match
+                    matching_ids.add(rid)
+        
+        return matching_ids
     
     def _apply_structured_search(self, 
                                candidate_ids: Set[RecordID], 
@@ -622,3 +656,4 @@ class MemoryState(TypedDict):
     L3: List[str]
     flagged: List[str]
     user_input: str
+    final_response: str

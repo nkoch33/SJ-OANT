@@ -154,10 +154,11 @@ class MemoryCurationAgent:
         # But we could add explicit management here
         summary = self.memory_store.get_memory_summary()
         
-        if summary["tier_sizes"]["L1"] > self.memory_store.l1_limit:
+        from core.types import MemoryTier
+        if summary["tier_sizes"]["L1"] > self.memory_store.tier_limits[MemoryTier.L1_WORKING]:
             print("   L1 over limit, compression will occur on next addition")
         
-        if summary["tier_sizes"]["L2"] > self.memory_store.l2_limit:
+        if summary["tier_sizes"]["L2"] > self.memory_store.tier_limits[MemoryTier.L2_SUMMARIZED]:
             print("   L2 over limit, promotion to L3 will occur")
     
     def execute(self, state: MemoryState, verification_result: Dict[str, Any] = None) -> MemoryState:

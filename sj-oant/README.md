@@ -47,7 +47,7 @@ python scripts/preflight_check.py --api-key "YOUR_API_KEY"
 
 ### 3. Run Evaluation
 ```bash
-python runners/eval_squad.py --api-key "YOUR_API_KEY" --limit 50
+python runners/eval_squad2.py --api-key "YOUR_API_KEY" --limit 50
 ```
 
 ### 4. Analyze Results
@@ -88,8 +88,10 @@ sj-oant/
 ├── evaluation/             # SQuAD evaluation framework
 ├── baselines/              # Comparison systems
 ├── runners/                # Execution scripts
-├── scripts/                # Utilities and analysis
-└── results/                # Evaluation outputs
+├── scripts/                # Essential utilities and analysis
+├── docs/                   # Documentation (phase reports, overviews)
+├── results/                # Evaluation outputs
+└── notebooks/              # Analysis and visualization
 ```
 
 ## 🔬 Research Impact

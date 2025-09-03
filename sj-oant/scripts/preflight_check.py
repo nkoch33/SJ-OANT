@@ -128,8 +128,8 @@ def check_components():
         print("✅ Baseline systems available")
         
         # Test evaluation
-        from evaluation.fictionalqa_eval import FictionalQAEvaluator
-        evaluator = FictionalQAEvaluator()
+        from evaluation.squad_eval import SQuADEvaluator
+        evaluator = SQuADEvaluator()
         print("✅ Evaluation system ready")
         
         return True
@@ -259,7 +259,8 @@ def main():
     if passed == total:
         print("🎉 ALL SYSTEMS GO! Ready for evaluation.")
         print("\n🚀 Next steps:")
-        print("   python runners/eval_baselines.py --limit 5")
+        print("   python runners/eval_squad2.py --api-key YOUR_API_KEY --limit 5")
+        print("   python runners/eval_multiturn.py --api-key YOUR_API_KEY --scenarios 5")
         return True
     else:
         print("❌ Some checks failed. Please fix issues before proceeding.")

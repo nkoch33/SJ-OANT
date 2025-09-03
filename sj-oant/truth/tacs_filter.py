@@ -255,14 +255,30 @@ class TACSFilter:
         print("🎯 TACS Filter: Screening context and filtering noise...")
         
         # First, check for redundancy
-        state = self.redundancy_filter.execute(state)
+        # Convert MemoryRecord objects to strings for redundancy check
+        l1_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L1", [])]
+        redundancy_state = {
+            "user_input": state["user_input"],
+            "L1": l1_strings
+        }
+        redundancy_state = self.redundancy_filter.execute(redundancy_state)
         
         # Then, filter memory context by relevance
         context = {"user_input": state["user_input"]}
         
-        # Filter each memory tier by relevance
-        state["L1"] = self.relevance_filter.filter_by_relevance(state["L1"], context)
-        state["L2"] = self.relevance_filter.filter_by_relevance(state["L2"], context)
+        # Convert MemoryRecord objects to strings for filtering
+        l1_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L1", [])]
+        l2_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L2", [])]
+        
+        # Filter each memory tier by relevance (on string content)
+        filtered_l1_strings = self.relevance_filter.filter_by_relevance(l1_strings, context)
+        filtered_l2_strings = self.relevance_filter.filter_by_relevance(l2_strings, context)
+        
+        # Keep original MemoryRecord objects that passed filtering
+        state["L1"] = [record for record in state.get("L1", []) 
+                       if (record.payload if hasattr(record, 'payload') else str(record)) in filtered_l1_strings]
+        state["L2"] = [record for record in state.get("L2", []) 
+                       if (record.payload if hasattr(record, 'payload') else str(record)) in filtered_l2_strings]
         # L3 is typically high-confidence facts, so filter more conservatively
         # state["L3"] = self.relevance_filter.filter_by_relevance(state["L3"], context)
         

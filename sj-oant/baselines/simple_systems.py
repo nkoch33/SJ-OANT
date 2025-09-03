@@ -1,14 +1,16 @@
 """
-baselines.simple_systems - Baseline System Implementations
+baselines.simple_systems - Enhanced Baseline System Implementations
 
-This module implements baseline systems for comparison with the TMM system:
-1. Direct LLM (no memory, context-only)
+This module implements baseline systems for comparison with the TMM system
+on SQuAD 2.0 evaluation, including support for unanswerable questions:
+
+1. Direct LLM (no memory, context-only) - Enhanced for truth maintenance
 2. Simple RAG (basic retrieval-augmented generation)
 3. Long Context (concatenate all history)
 4. Basic Memory (store everything, no filtering)
 
-These baselines represent the current state-of-the-art approaches that
-the TMM system should outperform on truth-maintained memory tasks.
+These baselines represent current approaches that the TMM system should
+outperform on memory-intensive and truth-maintained tasks.
 """
 import logging
 from abc import ABC, abstractmethod
@@ -47,7 +49,9 @@ class DirectLLMBaseline(BaselineSystem):
         """Initialize with an LLM."""
         self.llm = llm
         self.prompt_template = ChatPromptTemplate.from_template(
-            "Answer the following question based on the provided information:\n\n{input_text}\n\nAnswer:"
+            "Answer the following question based ONLY on the provided information. "
+            "If the answer cannot be found in the given context, respond with 'I don't know' or "
+            "'The information is not provided':\n\n{input_text}\n\nAnswer:"
         )
         logger.info("Initialized DirectLLM baseline")
     
@@ -75,7 +79,9 @@ class LongContextBaseline(BaselineSystem):
         self.max_context_length = max_context_length
         self.conversation_history: List[str] = []
         self.prompt_template = ChatPromptTemplate.from_template(
-            "Previous conversation:\n{context}\n\nCurrent input: {input_text}\n\nResponse:"
+            "Previous conversation:\n{context}\n\nCurrent input: {input_text}\n\n"
+            "Answer based only on the provided information. If the answer cannot be found, "
+            "respond with 'I don't know' or 'The information is not provided'.\n\nResponse:"
         )
         logger.info(f"Initialized LongContext baseline (max_length={max_context_length})")
     
