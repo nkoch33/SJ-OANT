@@ -6,23 +6,17 @@ for the Truth-Maintained Memory architecture.
 
 Key Components:
 - typed_store: Enterprise-grade memory storage with indexing and search
-- policies: Selective addition and combined deletion policies
-- voting: Multi-agent voting system for memory decisions (TODO)
 
 Example Usage:
-    from memory import InMemoryStore, PolicyEngine, PolicyConfig
+    from memory import InMemoryStore
+    from core.types import ConfidenceScores
     
     # Create memory store
     store = InMemoryStore(l1_limit=100, l2_limit=500, l3_limit=1000)
     
-    # Create policy engine
-    config = PolicyConfig(selective_add_trust_threshold=0.8)
-    policies = PolicyEngine(config)
-    
     # Add a record
-    record = MemoryRecord(payload="Important fact")
-    if policies.evaluate_addition(record).decision:
-        store.add(record)
+    scores = ConfidenceScores(truth_score=0.9, confidence=0.8)
+    record_id = store.add_to_l1("Important fact", scores)
 """
 
 from memory.typed_store import (
@@ -31,13 +25,7 @@ from memory.typed_store import (
     MemoryState  # For LangGraph compatibility
 )
 
-from memory.policies import (
-    PolicyEngine,
-    PolicyConfig,
-    PolicyDecision,
-    SelectiveAdditionPolicy,
-    CombinedDeletionPolicy
-)
+# Policy system removed - using simplified memory management
 
 __version__ = "0.1.0"
 
@@ -45,12 +33,5 @@ __all__ = [
     # Primary implementations
     "InMemoryStore",
     "TypedMemoryStore",
-    "MemoryState",
-    
-    # Policy system
-    "PolicyEngine",
-    "PolicyConfig", 
-    "PolicyDecision",
-    "SelectiveAdditionPolicy",
-    "CombinedDeletionPolicy"
+    "MemoryState"
 ]
