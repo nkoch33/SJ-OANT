@@ -608,8 +608,24 @@ class InMemoryStore(BaseMemoryStore):
         query_lower = query.lower()
         query_words = set(query_lower.split())
         
-        # Remove stop words for better matching
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'what', 'where', 'when', 'who', 'how', 'which'}
+        # Enhanced stop words for better matching (Phase 2.2 optimization)
+        stop_words = {
+            # Basic articles and determiners
+            'the', 'a', 'an', 'this', 'that', 'these', 'those',
+            # Prepositions
+            'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'into', 'through', 'during', 'before', 'after',
+            'above', 'below', 'between', 'among', 'throughout', 'within', 'without',
+            # Conjunctions
+            'and', 'or', 'but', 'nor', 'so', 'yet', 'although', 'though', 'because', 'since', 'while',
+            # Auxiliary verbs and forms of 'be'
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'shall',
+            # Question words (often noise in matching)
+            'what', 'where', 'when', 'who', 'how', 'which', 'why',
+            # Common pronouns
+            'it', 'its', 'they', 'them', 'their', 'we', 'us', 'our', 'you', 'your', 'he', 'him', 'his',
+            'she', 'her', 'i', 'me', 'my'
+        }
         meaningful_query_words = query_words - stop_words
         
         matching_ids = set()
