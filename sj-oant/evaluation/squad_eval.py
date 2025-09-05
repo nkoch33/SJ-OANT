@@ -27,6 +27,7 @@ from uuid import uuid4
 from datasets import load_dataset
 
 from tmm_pipeline import TMMPipelineFixed
+from evaluation.methodology_metrics import MethodologyMetricCalculator, MethodologyMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,12 @@ class EvaluationResult:
     answerable_accuracy: float  # Accuracy on answerable questions
     unanswerable_accuracy: float  # Accuracy on unanswerable questions
     memory_metrics: Dict[str, Any] = field(default_factory=dict)
+    # Methodology-specific metrics
+    fmr: float = 0.0  # False Memory Rate
+    mel: float = 0.0  # Memory Edit Latency
+    dar: float = 0.0  # Disturbance Adaptation Rate
+    memory_consistency: float = 0.0  # Memory consistency score
+    contradiction_resolution: float = 0.0  # Contradiction resolution rate
     errors: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()))
 
@@ -159,6 +166,15 @@ class SQuADEvaluator:
         memory_metrics = {"total_memory_records": 0, "contexts_stored": 0, "memory_retrievals": 0}
         errors = []
         
+        # Data collection for methodology metrics
+        responses = []
+        ground_truths = []
+        is_answerable = []
+        contexts = []
+        conversation_history = []
+        memory_operations = []
+        contradiction_events = []
+        
         examples_to_evaluate = examples[:limit] if limit else examples
         
         logger.info(f"Evaluating TMM system on {len(examples_to_evaluate)} SQuAD 2.0 examples")
@@ -179,6 +195,21 @@ class SQuADEvaluator:
                 # Step 2: Ask the question based on stored context
                 logger.debug(f"Example {i+1}/{len(examples_to_evaluate)}: Asking question")
                 response = tmm_pipeline.process(example.question)
+                
+                # Collect data for methodology metrics
+                responses.append(response)
+                ground_truths.append(example.answer)
+                is_answerable.append(example.is_answerable)
+                contexts.append(example.context)
+                
+                # Add to conversation history
+                conversation_history.append({
+                    "turn": i,
+                    "response": response,
+                    "context": example.context,
+                    "question": example.question,
+                    "is_answerable": example.is_answerable
+                })
                 
                 # Step 3: Evaluate the response
                 is_correct = self._check_answer_v2(response, example.answer, example.is_answerable)
@@ -217,9 +248,28 @@ class SQuADEvaluator:
         unanswerable_accuracy = unanswerable_correct / unanswerable_total if unanswerable_total > 0 else 0.0
         avg_response_time = total_time / len(examples_to_evaluate) if examples_to_evaluate else 0.0
         
+        # Calculate methodology metrics
+        metric_calculator = MethodologyMetricCalculator()
+        evaluation_data = {
+            "responses": responses,
+            "ground_truths": ground_truths,
+            "is_answerable": is_answerable,
+            "contexts": contexts,
+            "conversation_history": conversation_history,
+            "memory_operations": memory_operations,
+            "contradiction_events": contradiction_events,
+            "correction_turns": []  # SQuAD doesn't have explicit corrections
+        }
+        
+        methodology_metrics = metric_calculator.calculate_all_metrics(evaluation_data)
+        
         logger.info(f"{system_name} evaluation complete: {correct_answers}/{len(examples_to_evaluate)} correct ({accuracy:.2%})")
         logger.info(f"  Answerable: {answerable_correct}/{answerable_total} ({answerable_accuracy:.2%})")
         logger.info(f"  Unanswerable: {unanswerable_correct}/{unanswerable_total} ({unanswerable_accuracy:.2%})")
+        logger.info(f"  Methodology Metrics:")
+        logger.info(f"    FMR (False Memory Rate): {methodology_metrics.fmr:.3f}")
+        logger.info(f"    MEL (Memory Edit Latency): {methodology_metrics.mel:.2f}")
+        logger.info(f"    DAR (Disturbance Adaptation Rate): {methodology_metrics.dar:.3f}")
         
         return EvaluationResult(
             system_name=system_name,
@@ -230,6 +280,11 @@ class SQuADEvaluator:
             answerable_accuracy=answerable_accuracy,
             unanswerable_accuracy=unanswerable_accuracy,
             memory_metrics=memory_metrics,
+            fmr=methodology_metrics.fmr,
+            mel=methodology_metrics.mel,
+            dar=methodology_metrics.dar,
+            memory_consistency=methodology_metrics.memory_consistency,
+            contradiction_resolution=methodology_metrics.contradiction_resolution,
             errors=errors
         )
 

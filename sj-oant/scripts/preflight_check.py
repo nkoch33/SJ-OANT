@@ -143,7 +143,7 @@ def check_pipeline():
     print("\n🔄 CHECKING TMM PIPELINE INTEGRATION...")
     
     try:
-        from tmm_pipeline import TMMPipeline
+        from tmm_pipeline import TMMPipelineFixed
         from langchain_google_genai import ChatGoogleGenerativeAI
         
         # Create mock LLM for testing (no API call)
@@ -154,7 +154,7 @@ def check_pipeline():
                 return MockResponse()
         
         mock_llm = MockLLM()
-        pipeline = TMMPipeline(mock_llm)
+        pipeline = TMMPipelineFixed("test_key")
         
         print("✅ TMM pipeline created successfully")
         print(f"   - Components: planner, filter, verifier, writer, responder")
