@@ -165,6 +165,7 @@ class SQuADEvaluator:
         total_time = 0.0
         memory_metrics = {"total_memory_records": 0, "contexts_stored": 0, "memory_retrievals": 0}
         errors = []
+        correct_results = []  # Track individual results for detailed metrics
         
         # Data collection for methodology metrics
         responses = []
@@ -213,6 +214,7 @@ class SQuADEvaluator:
                 
                 # Step 3: Evaluate the response
                 is_correct = self._check_answer_v2(response, example.answer, example.is_answerable)
+                correct_results.append(is_correct)
                 if is_correct:
                     correct_answers += 1
                 

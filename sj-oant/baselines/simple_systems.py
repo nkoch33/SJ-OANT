@@ -94,11 +94,8 @@ class LongContextBaseline(BaselineSystem):
             # Build context (truncate if too long)
             context = "\n".join(self.conversation_history)
             if len(context) > self.max_context_length:
-                # Simple truncation from the beginning
-                words = context.split()
-                while len(" ".join(words)) > self.max_context_length and words:
-                    words.pop(0)
-                context = " ".join(words)
+                # Simple truncation from the beginning - use character-based truncation
+                context = context[-self.max_context_length:]
             
             # Generate response
             prompt = self.prompt_template.format_messages(
@@ -224,10 +221,7 @@ class BasicMemoryBaseline(BaselineSystem):
             # Use all memory as context (truncate if necessary)
             all_memory = "\n".join([record.content for record in self.memory])
             if len(all_memory) > 4000:  # Simple truncation
-                words = all_memory.split()
-                while len(" ".join(words)) > 4000 and words:
-                    words.pop(0)
-                all_memory = " ".join(words)
+                all_memory = all_memory[-4000:]
             
             prompt = self.prompt_template.format_messages(
                 all_memory=all_memory,

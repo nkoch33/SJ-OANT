@@ -54,6 +54,14 @@ class TMMPipelineFixed:
         """
         return self.multi_agent_pipeline.process(user_input)
 
+    def reset_memory(self):
+        """Reset the memory store."""
+        self.multi_agent_pipeline.memory_store.reset_memory()
+
+    def get_memory_summary(self) -> Dict[str, Any]:
+        """Get memory summary."""
+        return self.multi_agent_pipeline.memory_store.get_memory_summary()
+
 def create_tmm_pipeline(api_key: str, config: Dict[str, Any] = None, provider: str = "google") -> TMMPipelineFixed:
     """
     Factory function to create a TMM pipeline.

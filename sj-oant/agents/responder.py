@@ -146,6 +146,7 @@ class TemplateBasedStrategy:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize the template-based strategy."""
         self.config = config or {}
+        self.llm = None  # Will be set by the responder
         
         # Response templates for different scenarios
         self.templates = {
@@ -175,11 +176,14 @@ class TemplateBasedStrategy:
         # Determine response type based on context
         response_type = self._classify_response_type(query, context)
         
-        # Select appropriate template
-        template = self._select_template(response_type, context)
-        
-        # Generate content based on context
-        content = self._generate_content_from_context(template, query, context)
+        # If we have memory context and an LLM, use LLM-based response
+        if self.llm and response_type != ResponseType.FALLBACK:
+            content = self._generate_llm_response(query, context)
+            template = "llm_based"
+        else:
+            # Use template-based response
+            template = self._select_template(response_type, context)
+            content = self._generate_content_from_context(template, query, context)
         
         # Calculate generation time
         generation_time_ms = (time.perf_counter() - start_time) * 1000
@@ -221,7 +225,16 @@ class TemplateBasedStrategy:
         
         # Check for fallback conditions first
         memory_context = context.get("memory_context", {})
-        if not any(memory_context.get(tier, []) for tier in ["l1_cache", "l2_cache", "l3_cache"]):
+        memory_state = context.get("memory_state", {})
+        
+        # Check if we have any memory content
+        has_memory = False
+        if memory_context:
+            has_memory = any(memory_context.get(tier, []) for tier in ["l1_cache", "l2_cache", "l3_cache"])
+        elif memory_state:
+            has_memory = any(memory_state.get(tier, []) for tier in ["L1", "L2", "L3"])
+        
+        if not has_memory:
             return ResponseType.FALLBACK
         
         # Classify based on query patterns
@@ -244,21 +257,41 @@ class TemplateBasedStrategy:
     def _generate_content_from_context(self, template: str, query: str, context: Dict[str, Any]) -> str:
         """Generate content by filling template with context information."""
         memory_context = context.get("memory_context", {})
+        memory_state = context.get("memory_state", {})
         
         # Extract key information from memory tiers
         content_parts = []
         
-        # Prioritize L3 (facts) for grounding
-        if memory_context.get("l3_cache"):
-            content_parts.extend(memory_context["l3_cache"][:2])  # Top 2 facts
+        # Handle both memory formats
+        if memory_context:
+            # Prioritize L3 (facts) for grounding
+            if memory_context.get("l3_cache"):
+                content_parts.extend(memory_context["l3_cache"][:2])  # Top 2 facts
+            
+            # Add L2 (summaries) for additional context
+            if memory_context.get("l2_cache"):
+                content_parts.extend(memory_context["l2_cache"][:1])  # Top summary
+            
+            # Add L1 (recent) if needed
+            if not content_parts and memory_context.get("l1_cache"):
+                content_parts.extend(memory_context["l1_cache"][:1])  # Most recent
         
-        # Add L2 (summaries) for additional context
-        if memory_context.get("l2_cache"):
-            content_parts.extend(memory_context["l2_cache"][:1])  # Top summary
-        
-        # Add L1 (recent) if needed
-        if not content_parts and memory_context.get("l1_cache"):
-            content_parts.extend(memory_context["l1_cache"][:1])  # Most recent
+        elif memory_state:
+            # Handle memory_state format (L1, L2, L3)
+            # Prioritize L3 (facts) for grounding
+            if memory_state.get("L3"):
+                l3_records = memory_state["L3"][:2]  # Top 2 facts
+                content_parts.extend([record.payload if hasattr(record, 'payload') else str(record) for record in l3_records])
+            
+            # Add L2 (summaries) for additional context
+            if memory_state.get("L2"):
+                l2_records = memory_state["L2"][:1]  # Top summary
+                content_parts.extend([record.payload if hasattr(record, 'payload') else str(record) for record in l2_records])
+            
+            # Add L1 (recent) if needed
+            if not content_parts and memory_state.get("L1"):
+                l1_records = memory_state["L1"][:1]  # Most recent
+                content_parts.extend([record.payload if hasattr(record, 'payload') else str(record) for record in l1_records])
         
         # Combine content
         combined_content = ". ".join(content_parts) if content_parts else "No specific information available"
@@ -282,6 +315,49 @@ class TemplateBasedStrategy:
         topic_words = [w for w in words if w.lower() not in ["what", "when", "where", "who", "why", "how", "is", "are", "the", "a", "an"]]
         
         return " ".join(topic_words[:3])  # First 3 topic words
+    
+    def _generate_llm_response(self, query: str, context: Dict[str, Any]) -> str:
+        """Generate LLM-based response using stored context."""
+        if not self.llm:
+            return "I don't have sufficient information to answer that question accurately."
+        
+        # Extract context from memory
+        memory_context = context.get("memory_context", {})
+        memory_state = context.get("memory_state", {})
+        
+        context_text = ""
+        if memory_context:
+            # Handle memory_context format
+            for tier in ["l3_cache", "l2_cache", "l1_cache"]:
+                if memory_context.get(tier):
+                    context_text += " ".join(memory_context[tier][:2]) + " "
+        elif memory_state:
+            # Handle memory_state format
+            for tier in ["L3", "L2", "L1"]:
+                if memory_state.get(tier):
+                    records = memory_state[tier][:2]
+                    context_text += " ".join([record.payload if hasattr(record, 'payload') else str(record) for record in records]) + " "
+        
+        if not context_text.strip():
+            return "I don't have sufficient information to answer that question accurately."
+        
+        # Create prompt for LLM
+        prompt = f"""Based on the following information, answer the question:
+
+Context: {context_text.strip()}
+
+Question: {query}
+
+Answer:"""
+        
+        try:
+            from langchain_core.prompts import ChatPromptTemplate
+            prompt_template = ChatPromptTemplate.from_template(prompt)
+            response = self.llm.invoke(prompt_template.format_messages())
+            return response.content
+        except Exception as e:
+            logger.error(f"LLM response generation failed: {e}")
+            return "I don't have sufficient information to answer that question accurately."
     
     def _assess_relevance(self, content: str, query: str) -> float:
         """Assess relevance of content to query."""
@@ -685,7 +761,8 @@ class Responder(AgentPort):
 
 # Factory functions for easy instantiation
 def create_responder(strategies: Optional[List[str]] = None,
-                    config: Optional[Dict[str, Any]] = None) -> Responder:
+                    config: Optional[Dict[str, Any]] = None,
+                    llm=None) -> Responder:
     """
     Factory function for creating responder instances.
     
@@ -701,7 +778,10 @@ def create_responder(strategies: Optional[List[str]] = None,
     strategies = strategies or ["template_based"]
     for strategy_name in strategies:
         if strategy_name == "template_based":
-            strategy_instances.append(TemplateBasedStrategy(config))
+            strategy = TemplateBasedStrategy(config)
+            if llm:
+                strategy.llm = llm
+            strategy_instances.append(strategy)
         else:
             logger.warning(f"Unknown strategy: {strategy_name}")
     

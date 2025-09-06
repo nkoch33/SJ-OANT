@@ -68,7 +68,7 @@ class MultiAgentTMMPipeline:
         self.tacs_filter = TACSFilter(self.llm, self.config.get("relevance_threshold", 0.5))
         self.truth_verifier = RuleBasedVerifier()
         self.memory_curator = WriterEditor(self.llm, self.memory_store)
-        self.responder = create_responder(["template_based"], self.config)
+        self.responder = create_responder(["template_based"], self.config, self.llm)
         
         logger.info("Multi-agent TMM pipeline initialized with all agents")
     
@@ -132,9 +132,16 @@ class MultiAgentTMMPipeline:
             
             # Agent 3: Truth Verifier
             logger.info("✅ Truth Verifier: Verifying information truthfulness...")
+            # Convert filtered context list to dict format expected by verifier
+            verification_context = {
+                "filtered_context": state.filtered_context,
+                "existing_records": [
+                    record for record in filtered_state.get("L1", []) + filtered_state.get("L2", [])
+                ]
+            }
             state.verification_scores = self.truth_verifier.verify(
                 content=state.processed_input,
-                context=state.filtered_context
+                context=verification_context
             )
             
             # Agent 4: Memory Curator (Writer/Editor)

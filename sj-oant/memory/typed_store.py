@@ -657,6 +657,29 @@ class InMemoryStore(BaseMemoryStore):
         # TODO: Implement more sophisticated structured search
         # For now, just treat as additional filters
         return self._apply_filters(candidate_ids, query)
+    
+    def reset_memory(self) -> None:
+        """
+        Reset all memory by clearing all tiers and records.
+        
+        This method is used to simulate fresh conversations in evaluation.
+        """
+        with self._lock:
+            # Clear all records
+            self.records.clear()
+            
+            # Clear all tier indices
+            for tier in MemoryTier:
+                self.tier_index[tier].clear()
+            
+            # Clear all status indices
+            for status in MemoryStatus:
+                self.status_index[status].clear()
+            
+            # Reset operation counts
+            self._operation_counts.clear()
+            
+            logger.info("Memory store reset - all records and indices cleared")
 
 
 # Legacy compatibility for existing code

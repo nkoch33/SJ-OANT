@@ -135,6 +135,9 @@ class RuleBasedVerifier(BaseVerifier):
             raise VerificationError("Cannot verify empty content")
         
         try:
+            # Ensure context is a dict, handle case where it might be a list
+            if isinstance(context, list):
+                context = {"filtered_context": context}
             context = context or {}
             content_lower = content.lower()
             
