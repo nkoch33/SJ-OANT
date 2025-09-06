@@ -4,6 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI # type: ignore
 from langchain_core.prompts import ChatPromptTemplate # type: ignore
 import os
 from dotenv import load_dotenv # type: ignore
+import json
 
 # ---- Define State ----
 class MemoryState(TypedDict):
@@ -119,22 +120,116 @@ class AgentPipeline():
         return app
     # ---- Define Agent Nodes ----
     def prompt_refinement(self, state: MemoryState) -> MemoryState:
-        print("refined prompt")
+        prompt = self.prompts["prompt_refinement"].format(input=state["user_input"])
+        response = self.llm.invoke(prompt)
+
+        # Update state with refined input
+        state["user_input"] = response.content.strip()
         return state
 
     def redundancy_filter(self, state: MemoryState) -> MemoryState:
-        print("Checked for redundancy")
+        prompt = self.prompts["redundancy_filter"].format(
+            l1_cache=state["L1"],
+            input = state["user_input"]
+        )
+        response = self.llm.invoke(prompt)
+
+        # Parse JSON response
+        result = json.loads(response.content)
+
+        if result["is_redundant"]:
+            # Don't process further
+            state["user_input"] = "" # Clear input because it's redundant
+        else:
+            # Keep unique elements
+            if "unique_elements" in result:
+                state["user_input"] = " ".join(result["unique_elements"])
+
         return state
 
     def contradiction_detection(self, state: MemoryState) -> MemoryState:
-        print("Checked for contradictions")
+        prompt = self.prompts["contradiction_detection"].format(
+            l3_cache = state["L3"],
+            input = state["user_input"]
+        )
+        response = self.llm.invoke(prompt)
+
+        # Parse JSON response
+        result = json.loads(response.content)
+
+        if result["has_contradiction"]:
+            # Route to FLAGGED instead of continuing
+            state["flagged"].append({
+                "content": state["user_input"],
+                "reason": result["reasoning"],
+                "conflicts": result["conflicting_facts"]
+            })
+            state["user_input"] = "" # Clear contradictory input
         return state
 
     def memory_curation(self, state: MemoryState) -> MemoryState:
-        print("curated memory prompt")
+        # Skip if input was flagged or filtered out
+        if not state["user_input"]:
+            return state
+        
+        # Add to L1 (working memory)
+        state["L1"].append(state["user_input"])
+
+        # Memory management: L1 -> L2 -> L3 promotion
+        L1_LIMIT = 5 # Keep last 5 items in short term memory
+        L2_LIMIT = 10 # Keep last 10 summaries
+
+        # L1 overflow: compress into L2
+        if len(state["L1"]) > L1_LIMIT:
+            # Take oldest items from L1
+            to_compress = state["L1"][:len(state["L1"]) - L1_LIMIT]
+
+            # Create summary prompt
+            summary_prompt = f"""
+            Summarize these recent conversation items into key facts:
+            {to_compress}
+            Return only the essential information, one line per fact.
+            """
+
+            summary_response = self.llm.invoke(summary_prompt)
+            state["L2"].append(summary_response.content)
+
+            # Keep only recent items in L1
+            state["L1"] = state["L1"][-L1_LIMIT:]
+        
+        # L2 overflow: compress into L3
+        if len(state["L2"]) > L2_LIMIT:
+            # Take oldest summaries from L2
+            to_archive = state["L2"][:len(state["l1"]) - L1_LIMIT]
+
+            # Create archival prompt
+            archive_prompt = f"""
+            Extract verified, factual information from these summaries for long-term storage:
+            {to_archive}
+            Return only concrete facts that are likely to remain true over time.
+            """
+
+            archive_response = self.llm.invoke(archive_prompt)
+            state["L3"].append(archive_response.content)
+
+            # Keep only recent summaries in L2
+            state["L2"] = state["L2"][-L2_LIMIT:]
+
         return state
+
     def llm_generation(self, state: MemoryState) -> MemoryState:
-        print("generating final message")
+        prompt = self.prompts["main_llm"].format(
+            l1_cache = state["L1"],
+            l2_cache = state["L2"],
+            l3_cache = state["L3"],
+            user_input = state["user_input"]
+        )
+
+        response = self.llm.invoke(prompt)
+
+        # Store the final response in state
+        state["final_response"] = response.content
+        
         return state
 
 def main():
