@@ -274,12 +274,16 @@ class MultiTurnEvaluator:
         response_time_avg = sum(response_times) / len(response_times) if response_times else 0
         
         # Calculate methodology metrics
-        methodology_metrics = self.methodology_calculator.calculate_metrics(
-            responses=[],  # Will be populated with actual responses
-            ground_truths=[],  # Will be populated with actual ground truths
-            memory_operations=memory_operations,
-            contradiction_events=false_memory_events
-        )
+        methodology_metrics = self.methodology_calculator.calculate_all_metrics({
+            "responses": [],  # Will be populated with actual responses
+            "ground_truths": [],  # Will be populated with actual ground truths
+            "is_answerable": [],  # Will be populated with actual answerable flags
+            "contexts": [],  # Will be populated with actual contexts
+            "conversation_history": [],  # Will be populated with actual conversation history
+            "memory_operations": memory_operations,
+            "contradiction_events": false_memory_events,
+            "correction_turns": []
+        })
         
         # Calculate domain breakdown
         domain_breakdown = {}
@@ -406,7 +410,7 @@ class MultiTurnEvaluator:
             false_memory_rate=0.0,
             truth_verification_calls=0,
             contradiction_detections=0,
-            methodology_metrics=MethodologyMetrics(fmr=0.0, mel=0.0, dar=0.0, memory_consistency=0.0, contradiction_resolution=0.0),
+            methodology_metrics=MethodologyMetrics(fmr=0.0, mel=0.0, dar=0.0, accuracy=0.0, answerable_accuracy=0.0, unanswerable_accuracy=0.0, memory_consistency=0.0, contradiction_resolution=0.0),
             successful_dialogues=successful_dialogues,
             total_dialogues=len(dialogues),
             total_turns=total_turns,
