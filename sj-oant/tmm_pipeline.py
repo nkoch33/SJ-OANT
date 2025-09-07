@@ -53,11 +53,11 @@ class TMMPipelineFixed:
         the complete context-filtering agent chain.
         """
         return self.multi_agent_pipeline.process(user_input)
-
+    
     def reset_memory(self):
         """Reset the memory store."""
         self.multi_agent_pipeline.memory_store.reset_memory()
-
+    
     def get_memory_summary(self) -> Dict[str, Any]:
         """Get memory summary."""
         return self.multi_agent_pipeline.memory_store.get_memory_summary()

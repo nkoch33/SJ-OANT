@@ -1,24 +1,24 @@
 """
-baselines package - Baseline System Implementations
+baselines package - Multi-Turn Baseline System Implementations
 
-This package provides baseline systems for comparison with the TMM system,
-including DirectLLM, LongContext, SimpleRAG, and BasicMemory approaches.
+This package provides baseline systems for comparison with the TMM system
+on multi-turn dialogue tasks using the MultiWOZ dataset.
 """
 
-from .simple_systems import (
-    BaselineSystem, 
-    DirectLLMBaseline, 
-    LongContextBaseline, 
-    SimpleRAGBaseline, 
-    BasicMemoryBaseline,
-    create_baseline_systems
+from .multiturn_systems import (
+    BaseMultiTurnSystem,
+    DirectLLMBaseline,
+    LongContextBaseline,
+    SimpleStateTrackerBaseline,
+    NaiveMemoryBaseline,
+    create_multiturn_baselines
 )
 
 __all__ = [
-    "BaselineSystem",
-    "DirectLLMBaseline", 
-    "LongContextBaseline", 
-    "SimpleRAGBaseline", 
-    "BasicMemoryBaseline",
-    "create_baseline_systems"
+    "BaseMultiTurnSystem",
+    "DirectLLMBaseline",
+    "LongContextBaseline",
+    "SimpleStateTrackerBaseline",
+    "NaiveMemoryBaseline",
+    "create_multiturn_baselines"
 ]

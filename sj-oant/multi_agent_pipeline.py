@@ -160,7 +160,7 @@ class MultiAgentTMMPipeline:
             logger.info("💬 Responder: Generating final response...")
             context = {
                 "filtered_context": state.filtered_context,
-                "memory_state": self.memory_store.get_state(),
+                "memory_state": updated_memory_state,  # Use the updated memory state from curator
                 "planning_info": state.planning_result
             }
             state.final_response = self.responder.respond(

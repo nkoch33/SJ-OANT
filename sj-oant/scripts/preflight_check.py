@@ -76,19 +76,21 @@ def check_dataset():
     try:
         from datasets import load_dataset
         
-        # Test SQuAD loading
-        print("   Loading SQuAD dataset (this may take a moment)...")
-        ds = load_dataset("squad")
+        # Test MultiWOZ loading
+        print("   Loading MultiWOZ dataset (this may take a moment)...")
+        ds = load_dataset("multiwoz", "2.4")
         
-        print(f"✅ SQuAD loaded successfully:")
-        print(f"   - Train examples: {len(ds['train'])}")
-        print(f"   - Validation examples: {len(ds['validation'])}")
+        print(f"✅ MultiWOZ loaded successfully:")
+        print(f"   - Train dialogues: {len(ds['train'])}")
+        print(f"   - Validation dialogues: {len(ds['validation'])}")
+        print(f"   - Test dialogues: {len(ds['test'])}")
         print(f"   - Columns: {list(ds['train'].column_names)}")
         
         # Test sample data
         sample = ds['validation'][0]
-        print(f"   - Sample context length: {len(sample['context'].split())} words")
-        print(f"   - Sample question: {sample['question'][:80]}...")
+        print(f"   - Sample dialogue ID: {sample['dialogue_id']}")
+        print(f"   - Sample turns: {len(sample['turns'])}")
+        print(f"   - Sample domain: {sample.get('domain', 'multi')}")
         
         return True
         
@@ -124,13 +126,13 @@ def check_components():
         print("✅ Truth verifier created")
         
         # Test baselines
-        from baselines.simple_systems import create_baseline_systems
-        print("✅ Baseline systems available")
+        from baselines.multiturn_systems import create_multiturn_baselines
+        print("✅ Multi-turn baseline systems available")
         
         # Test evaluation
-        from evaluation.squad_eval import SQuADEvaluator
-        evaluator = SQuADEvaluator()
-        print("✅ Evaluation system ready")
+        from evaluation.multiturn_eval import MultiTurnEvaluator
+        evaluator = MultiTurnEvaluator("test_key")
+        print("✅ Multi-turn evaluation system ready")
         
         return True
         
