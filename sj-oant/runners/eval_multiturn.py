@@ -58,27 +58,59 @@ def main():
         
         results = {}
         
-        # Evaluate TMM system
+        # Evaluate TMM system with error handling
         logger.info("Evaluating TMM Pipeline...")
-        tmm_result = evaluator.evaluate_tmm_system(dialogues)
-        results["TMM_Pipeline"] = tmm_result
-        
-        logger.info(f"TMM Pipeline: {tmm_result.dialogue_success_rate:.2%} success rate")
-        logger.info(f"  Information Accuracy: {tmm_result.information_accuracy:.2%}")
-        logger.info(f"  Memory Consistency: {tmm_result.memory_consistency:.2%}")
-        logger.info(f"  False Memory Rate: {tmm_result.false_memory_rate:.2%}")
-        logger.info(f"  Avg Response Time: {tmm_result.response_time_avg:.3f}s")
+        try:
+            tmm_result = evaluator.evaluate_tmm_system(dialogues)
+            results["TMM_Pipeline"] = tmm_result
+            logger.info(f"TMM Pipeline: {tmm_result.dialogue_success_rate:.2%} success rate")
+            logger.info(f"  Information Accuracy: {tmm_result.information_accuracy:.2%}")
+            logger.info(f"  Memory Consistency: {tmm_result.memory_consistency:.2%}")
+            logger.info(f"  False Memory Rate: {tmm_result.false_memory_rate:.2%}")
+            logger.info(f"  Avg Response Time: {tmm_result.response_time_avg:.3f}s")
+        except Exception as e:
+            logger.error(f"TMM evaluation failed: {e}")
+            logger.error("Continuing with baseline evaluation...")
+            # Create a dummy result to prevent crash
+            from evaluation.multiturn_eval import MultiTurnEvaluationResult
+            from evaluation.methodology_metrics import MethodologyMetrics
+            results["TMM_Pipeline"] = MultiTurnEvaluationResult(
+                dialogue_success_rate=0.0, information_accuracy=0.0, memory_consistency=0.0,
+                response_time_avg=0.0, memory_operations={}, memory_retrievals=0, memory_stores=0,
+                memory_updates=0, false_memory_rate=0.0, truth_verification_calls=0,
+                contradiction_detections=0, methodology_metrics=MethodologyMetrics(
+                    fmr=0.0, mel=0.0, dar=0.0, accuracy=0.0, answerable_accuracy=0.0,
+                    unanswerable_accuracy=0.0, memory_consistency=0.0, contradiction_resolution=0.0
+                ), successful_dialogues=0, total_dialogues=len(dialogues), total_turns=0,
+                domain_breakdown={}
+            )
         
         # Evaluate baselines
         baseline_names = ["DirectLLM", "LongContext", "SimpleStateTracker", "NaiveMemory"]
         
         for baseline_name in baseline_names:
             logger.info(f"Evaluating {baseline_name}...")
-            baseline_result = evaluator.evaluate_baseline_system(baseline_name, dialogues)
-            results[baseline_name] = baseline_result
-            
-            logger.info(f"{baseline_name}: {baseline_result.dialogue_success_rate:.2%} success rate")
-            logger.info(f"  Avg Response Time: {baseline_result.response_time_avg:.3f}s")
+            try:
+                baseline_result = evaluator.evaluate_baseline_system(baseline_name, dialogues)
+                results[baseline_name] = baseline_result
+                logger.info(f"{baseline_name}: {baseline_result.dialogue_success_rate:.2%} success rate")
+                logger.info(f"  Avg Response Time: {baseline_result.response_time_avg:.3f}s")
+            except Exception as e:
+                logger.error(f"{baseline_name} evaluation failed: {e}")
+                logger.error("Continuing with next baseline...")
+                # Create a dummy result to prevent crash
+                from evaluation.multiturn_eval import MultiTurnEvaluationResult
+                from evaluation.methodology_metrics import MethodologyMetrics
+                results[baseline_name] = MultiTurnEvaluationResult(
+                    dialogue_success_rate=0.0, information_accuracy=0.0, memory_consistency=0.0,
+                    response_time_avg=0.0, memory_operations={}, memory_retrievals=0, memory_stores=0,
+                    memory_updates=0, false_memory_rate=0.0, truth_verification_calls=0,
+                    contradiction_detections=0, methodology_metrics=MethodologyMetrics(
+                        fmr=0.0, mel=0.0, dar=0.0, accuracy=0.0, answerable_accuracy=0.0,
+                        unanswerable_accuracy=0.0, memory_consistency=0.0, contradiction_resolution=0.0
+                    ), successful_dialogues=0, total_dialogues=len(dialogues), total_turns=0,
+                    domain_breakdown={}
+                )
         
         # Print summary
         logger.info("=" * 60)

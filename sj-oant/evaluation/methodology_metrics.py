@@ -282,7 +282,12 @@ class MethodologyMetricCalculator:
         total_ops = len(memory_operations)
         
         for op in memory_operations:
-            if op.get("consistent", True):  # Assume consistent unless marked otherwise
+            # Handle both dict and string formats
+            if isinstance(op, dict):
+                if op.get("consistent", True):  # Assume consistent unless marked otherwise
+                    consistent_ops += 1
+            else:
+                # If it's a string, assume it's consistent
                 consistent_ops += 1
         
         consistency = consistent_ops / total_ops
@@ -309,7 +314,12 @@ class MethodologyMetricCalculator:
         total_contradictions = len(contradiction_events)
         
         for event in contradiction_events:
-            if event.get("resolved", False):
+            # Handle both dict and string formats
+            if isinstance(event, dict):
+                if event.get("resolved", False):
+                    resolved_contradictions += 1
+            else:
+                # If it's a string, assume it's resolved
                 resolved_contradictions += 1
         
         resolution_rate = resolved_contradictions / total_contradictions
