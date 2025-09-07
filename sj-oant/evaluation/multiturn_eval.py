@@ -93,10 +93,10 @@ class MultiTurnEvaluator:
         self.config = config or {}
         self.methodology_calculator = MethodologyMetricCalculator()
         
-        # Load MultiWOZ dataset
-        logger.info("Loading MultiWOZ 2.4 dataset...")
-        self.dataset = load_dataset("multiwoz", "2.4")
-        logger.info(f"Loaded MultiWOZ dataset with {len(self.dataset['train'])} training dialogues")
+        # Load BlendedSkillTalk dataset (multi-turn dialogue dataset)
+        logger.info("Loading BlendedSkillTalk dataset...")
+        self.dataset = load_dataset("blended_skill_talk")
+        logger.info(f"Loaded BlendedSkillTalk dataset with {len(self.dataset['train'])} training dialogues")
         
         # Initialize TMM system
         self.tmm_system = TMMPipelineFixed(api_key, config)
@@ -108,7 +108,7 @@ class MultiTurnEvaluator:
     
     def load_dialogues(self, split: str = "test", limit: Optional[int] = None) -> List[DialogueSession]:
         """
-        Load and preprocess MultiWOZ dialogues.
+        Load and preprocess BlendedSkillTalk dialogues.
         
         Args:
             split: Dataset split to use ("train", "validation", "test")
@@ -117,36 +117,52 @@ class MultiTurnEvaluator:
         Returns:
             List of DialogueSession objects
         """
-        logger.info(f"Loading {split} dialogues from MultiWOZ...")
+        logger.info(f"Loading {split} dialogues from BlendedSkillTalk...")
         
         data = self.dataset[split]
         if limit:
             data = data.select(range(min(limit, len(data))))
         
         dialogues = []
-        for item in data:
-            dialogue_id = item["dialogue_id"]
-            domain = item.get("domain", "multi")
+        for i, item in enumerate(data):
+            dialogue_id = f"blended_skill_talk_{i:04d}"
+            domain = item.get("context", "general")
             
-            # Parse dialogue turns
+            # Parse dialogue turns from BlendedSkillTalk format
             turns = []
-            for turn_data in item["turns"]:
-                turn = DialogueTurn(
-                    turn_id=turn_data["turn_id"],
-                    speaker=turn_data["speaker"],
-                    utterance=turn_data["utterance"],
-                    dialogue_act=turn_data.get("dialogue_act"),
-                    belief_state=turn_data.get("belief_state")
-                )
-                turns.append(turn)
+            turn_id = 0
             
-            dialogue = DialogueSession(
-                dialogue_id=dialogue_id,
-                domain=domain,
-                turns=turns,
-                goal=item.get("goal")
-            )
-            dialogues.append(dialogue)
+            # Add previous utterances
+            for utterance in item.get("previous_utterance", []):
+                if utterance.strip():
+                    turn = DialogueTurn(
+                        turn_id=turn_id,
+                        speaker="user" if turn_id % 2 == 0 else "system",
+                        utterance=utterance
+                    )
+                    turns.append(turn)
+                    turn_id += 1
+            
+            # Add free messages (conversation)
+            for utterance in item.get("free_messages", []):
+                if utterance.strip():
+                    turn = DialogueTurn(
+                        turn_id=turn_id,
+                        speaker="user" if turn_id % 2 == 0 else "system",
+                        utterance=utterance
+                    )
+                    turns.append(turn)
+                    turn_id += 1
+            
+            # Only include dialogues with multiple turns
+            if len(turns) >= 2:
+                dialogue = DialogueSession(
+                    dialogue_id=dialogue_id,
+                    domain=domain,
+                    turns=turns,
+                    goal={"personas": item.get("personas", [])}
+                )
+                dialogues.append(dialogue)
         
         logger.info(f"Loaded {len(dialogues)} dialogues from {split} split")
         return dialogues
