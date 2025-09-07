@@ -230,7 +230,7 @@ class MultiTurnEvaluator:
                             contradiction_detections += 1
                         
                         dialogue_turns += 1
-                        
+                
                     except Exception as e:
                         logger.error(f"Error processing turn {turn.turn_id}: {e}")
                         # Continue with next turn instead of breaking the entire dialogue
