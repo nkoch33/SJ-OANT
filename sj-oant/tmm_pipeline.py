@@ -61,6 +61,14 @@ class TMMPipelineFixed:
     def get_memory_summary(self) -> Dict[str, Any]:
         """Get memory summary."""
         return self.multi_agent_pipeline.memory_store.get_memory_summary()
+    
+    def get_truth_verification_calls(self) -> int:
+        """Get the number of truth verification calls made."""
+        return self.multi_agent_pipeline.get_truth_verification_calls()
+    
+    def get_contradiction_detections(self) -> int:
+        """Get the number of contradictions detected."""
+        return self.multi_agent_pipeline.get_contradiction_detections()
 
 def create_tmm_pipeline(api_key: str, config: Dict[str, Any] = None, provider: str = "google") -> TMMPipelineFixed:
     """

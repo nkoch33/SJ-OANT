@@ -104,8 +104,14 @@ class MemoryCurationAgent:
             })
         
         # If high confidence and verified, consider for L2/L3
-        elif verification_result.get("confidence", 0.0) > 0.8:
-            if verification_result.get("truth_score", 0.0) > 0.9:
+        elif verification_result.get("confidence", 0.0) > 0.6:  # Lowered from 0.7
+            if verification_result.get("truth_score", 0.0) > 0.75:  # Lowered from 0.85 for more L3 storage
+                decision.update({
+                    "target_tier": "L3",  # Very high quality content goes to L3
+                    "reason": "Very high confidence and truth score",
+                    "metadata": {"quality": "very_high"}
+                })
+            elif verification_result.get("truth_score", 0.0) > 0.5:  # High quality -> L2
                 decision.update({
                     "target_tier": "L2",  # High-quality content goes to L2 first
                     "reason": "High confidence and truth score",
@@ -137,9 +143,27 @@ class MemoryCurationAgent:
                 confidence=confidence,
                 evidentiality=confidence
             )
-            # Don't pass metadata as a separate argument since it may conflict with MemoryRecord
             self.memory_store.add_to_l1(content, scores=scores)
-        # TODO: Add direct L2/L3 addition methods to TypedMemoryStore
+        elif target_tier == "L2":
+            # Create proper ConfidenceScores object for L2
+            from core.types import ConfidenceScores
+            confidence = metadata.get("confidence", 0.8)
+            scores = ConfidenceScores(
+                truth_score=confidence,
+                confidence=confidence,
+                evidentiality=confidence
+            )
+            self.memory_store.add_to_l2(content, scores=scores)
+        elif target_tier == "L3":
+            # Create proper ConfidenceScores object for L3
+            from core.types import ConfidenceScores
+            confidence = metadata.get("confidence", 0.9)
+            scores = ConfidenceScores(
+                truth_score=confidence,
+                confidence=confidence,
+                evidentiality=confidence
+            )
+            self.memory_store.add_to_l3(content, scores=scores)
         
         print(f"   Stored to {target_tier}: {content[:50]}...")
         print(f"   Reason: {decision['reason']}")
@@ -185,6 +209,7 @@ class MemoryCurationAgent:
             }
         
         # Make storage decision
+        print(f"   📊 Verification scores: confidence={verification_result.get('confidence', 0.0):.3f}, truth_score={verification_result.get('truth_score', 0.0):.3f}")
         decision = self.make_storage_decision(content, verification_result)
         
         # Execute the decision

@@ -73,8 +73,18 @@ class RuleBasedVerifier(BaseVerifier):
         ]
         
         self.contradiction_patterns = [
+            # Basic contradictions
             ("is", "is not"), ("was", "was not"), ("will", "will not"),
-            ("can", "cannot"), ("true", "false"), ("yes", "no")
+            ("can", "cannot"), ("true", "false"), ("yes", "no"),
+            
+            # MultiWOZ-specific contradictions
+            ("book", "cancel"), ("reserve", "cancel"), ("confirm", "deny"),
+            ("cheap", "expensive"), ("free", "paid"), ("available", "unavailable"),
+            ("open", "closed"), ("monday", "tuesday"), ("tuesday", "wednesday"),
+            ("wednesday", "thursday"), ("thursday", "friday"), ("friday", "saturday"),
+            ("saturday", "sunday"), ("east", "west"), ("north", "south"),
+            ("1 person", "2 people"), ("1 night", "2 nights"), ("single", "double"),
+            ("wifi", "no wifi"), ("parking", "no parking"), ("breakfast", "no breakfast")
         ]
         
         self._verification_count = 0
@@ -265,6 +275,28 @@ class RuleBasedVerifier(BaseVerifier):
             if indicator in content_lower:
                 quality_score += 0.15
         
+        # NEW: Boost scores for factual, specific information
+        factual_indicators = ["book", "hotel", "restaurant", "train", "taxi", "address", "phone", "price", "time", "date"]
+        for indicator in factual_indicators:
+            if indicator in content_lower:
+                quality_score += 0.1
+        
+        # NEW: Boost scores for user preferences and requirements
+        preference_indicators = ["need", "want", "looking for", "require", "prefer", "cheap", "expensive", "stars", "wifi", "parking", "east", "west", "north", "south", "center"]
+        for indicator in preference_indicators:
+            if indicator in content_lower:
+                quality_score += 0.05
+        
+        # NEW: Boost for booking-specific language
+        booking_indicators = ["reserve", "confirm", "reference", "booking", "reservation", "check-in", "check-out", "arrive", "depart", "leave"]
+        for indicator in booking_indicators:
+            if indicator in content_lower:
+                quality_score += 0.08
+        
+        # NEW: Boost scores for specific details
+        if len(content_lower.split()) > 5:  # Substantial content
+            quality_score += 0.1
+        
         # Penalize weak evidence language
         weak_indicators = ["anecdotal", "hearsay", "rumor", "unverified"]
         for indicator in weak_indicators:
@@ -281,6 +313,20 @@ class RuleBasedVerifier(BaseVerifier):
         for booster in self.confidence_boosters:
             if booster in content_lower:
                 adjustment += 0.1
+        
+        # NEW: Boost confidence for clear, direct statements
+        direct_indicators = ["i need", "i want", "book", "reserve", "find", "looking for", "please"]
+        for indicator in direct_indicators:
+            if indicator in content_lower:
+                adjustment += 0.05
+        
+        # NEW: Boost confidence for specific details
+        if any(char.isdigit() for char in content_lower):  # Contains numbers
+            adjustment += 0.1
+        
+        # NEW: Boost confidence for complete sentences
+        if content_lower.endswith(('.', '!', '?')):
+            adjustment += 0.05
         
         # Apply confidence reducers
         for reducer in self.confidence_reducers:

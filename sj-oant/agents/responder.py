@@ -178,10 +178,12 @@ class TemplateBasedStrategy:
         
         # If we have memory context and an LLM, use LLM-based response
         if self.llm and response_type != ResponseType.FALLBACK:
+            logger.info(f"    Using LLM-based response (type: {response_type})")
             content = self._generate_llm_response(query, context)
             template = "llm_based"
         else:
             # Use template-based response
+            logger.info(f"    Using template-based response (llm: {self.llm is not None}, type: {response_type})")
             template = self._select_template(response_type, context)
             content = self._generate_content_from_context(template, query, context)
         
@@ -191,8 +193,8 @@ class TemplateBasedStrategy:
         return ResponseCandidate(
             content=content,
             response_type=response_type,
-            generation_strategy="template_based",
-            model_used="template_engine",
+            generation_strategy="llm_based" if template == "llm_based" else "template_based",
+            model_used="gemini-1.5-flash" if template == "llm_based" else "template_engine",
             generation_time_ms=generation_time_ms,
             token_count=len(content.split()),
             grounding_sources=self._extract_grounding_sources(context),
@@ -237,8 +239,12 @@ class TemplateBasedStrategy:
         if not has_memory:
             return ResponseType.FALLBACK
         
-        # Classify based on query patterns
-        if any(word in query_lower for word in ["how", "why", "explain"]):
+        # MultiWOZ-specific classification
+        if any(word in query_lower for word in ["book", "reserve", "confirm", "reference"]):
+            return ResponseType.INFORMATIONAL  # Booking requests
+        elif any(word in query_lower for word in ["need", "want", "looking for", "can you", "please"]):
+            return ResponseType.INFORMATIONAL  # Information requests
+        elif any(word in query_lower for word in ["how", "why", "explain"]):
             return ResponseType.INSTRUCTIONAL
         elif any(word in query_lower for word in ["analyze", "compare", "evaluate"]):
             return ResponseType.ANALYTICAL
@@ -330,34 +336,131 @@ class TemplateBasedStrategy:
             # Handle memory_context format
             for tier in ["l3_cache", "l2_cache", "l1_cache"]:
                 if memory_context.get(tier):
-                    context_text += " ".join(memory_context[tier][:2]) + " "
+                    tier_content = " ".join(memory_context[tier][:3])
+                    if tier_content.strip():
+                        context_text += f"• {tier_content}\n"
         elif memory_state:
-            # Handle memory_state format
+            # Handle memory_state format - prioritize L2 and L3 for better context
             for tier in ["L3", "L2", "L1"]:
                 if memory_state.get(tier):
-                    records = memory_state[tier][:2]
-                    context_text += " ".join([record.payload if hasattr(record, 'payload') else str(record) for record in records]) + " "
+                    records = memory_state[tier][:3]
+                    tier_content = " ".join([record.payload if hasattr(record, 'payload') else str(record) for record in records])
+                    if tier_content.strip():
+                        tier_label = {"L3": "📚 ARCHIVED", "L2": "📝 SUMMARIZED", "L1": "💭 RECENT"}[tier]
+                        context_text += f"• {tier_label}: {tier_content}\n"
         
         if not context_text.strip():
             return "I don't have sufficient information to answer that question accurately."
         
-        # Create prompt for LLM
-        prompt = f"""Based on the following information, answer the question:
+        # Determine request type for better prompting
+        query_lower = query.lower()
+        request_type = "general"
+        if any(word in query_lower for word in ["book", "reserve", "confirm"]):
+            request_type = "booking"
+        elif any(word in query_lower for word in ["hotel", "accommodation", "stay"]):
+            request_type = "hotel"
+        elif any(word in query_lower for word in ["train", "railway", "departure"]):
+            request_type = "train"
+        elif any(word in query_lower for word in ["taxi", "cab", "ride"]):
+            request_type = "taxi"
+        elif any(word in query_lower for word in ["restaurant", "food", "eat"]):
+            request_type = "restaurant"
+        elif any(word in query_lower for word in ["attraction", "visit", "see"]):
+            request_type = "attraction"
+        
+        # Create MultiWOZ-specific prompt with few-shot examples
+        examples = self._get_few_shot_examples(request_type)
+        
+        prompt = f"""You are an expert travel booking assistant for Cambridge, UK. You help users with hotel, restaurant, attraction, taxi, and train bookings.
 
-Context: {context_text.strip()}
+{examples}
 
-Question: {query}
+CONVERSATION HISTORY:
+{context_text.strip()}
 
-Answer:"""
+CURRENT USER REQUEST: {query}
+REQUEST TYPE: {request_type.upper()}
+
+INSTRUCTIONS:
+1. Use the conversation history to understand the user's ongoing needs and preferences
+2. For {request_type} requests: provide specific, actionable information
+3. Be professional, helpful, and specific to Cambridge, UK
+4. If booking: offer concrete options with details
+5. If information: provide accurate, useful details
+6. If you need more information, ask one clear question at a time
+
+RESPONSE:"""
         
         try:
-            from langchain_core.prompts import ChatPromptTemplate
-            prompt_template = ChatPromptTemplate.from_template(prompt)
-            response = self.llm.invoke(prompt_template.format_messages())
+            # Use the LLM directly with the prompt string
+            response = self.llm.invoke(prompt)
             return response.content
         except Exception as e:
             logger.error(f"LLM response generation failed: {e}")
             return "I don't have sufficient information to answer that question accurately."
+    
+    def _get_few_shot_examples(self, request_type: str) -> str:
+        """Get few-shot examples for the request type."""
+        examples = {
+            "hotel": """
+EXAMPLES:
+User: "I need a hotel in the east with 4 stars"
+Assistant: "I can help you find a 4-star hotel in the east of Cambridge. Let me search for options that meet your requirements. Would you like me to look for specific amenities like free WiFi, parking, or breakfast?"
+
+User: "That doesn't matter as long as it has free wifi and parking"
+Assistant: "Perfect! I'll focus on hotels with free WiFi and parking in the east. Let me find some 4-star options for you. How many people and nights are you looking for?"
+""",
+            "train": """
+EXAMPLES:
+User: "I need a train from Cambridge to Birmingham on Friday"
+Assistant: "I can help you find train options from Cambridge to Birmingham for Friday. What time would you like to depart, and do you need to arrive by a specific time?"
+
+User: "I want to get there by 19:45 at the latest"
+Assistant: "I'll find trains that arrive in Birmingham by 19:45 on Friday. Let me check the available options and provide you with departure times, journey duration, and prices."
+""",
+            "taxi": """
+EXAMPLES:
+User: "I need a taxi from Saint John's college to Pizza Hut"
+Assistant: "I can arrange a taxi for you from Saint John's College to Pizza Hut. What time would you like to be picked up?"
+
+User: "I want to leave after 17:15"
+Assistant: "Perfect! I'll book a taxi for you to leave Saint John's College after 17:15. The journey to Pizza Hut should take about 10-15 minutes depending on traffic."
+""",
+            "restaurant": """
+EXAMPLES:
+User: "I'm looking for a restaurant with good food"
+Assistant: "I'd be happy to recommend some excellent restaurants in Cambridge! What type of cuisine are you interested in, and do you have any dietary preferences or budget considerations?"
+
+User: "Something with Italian food, not too expensive"
+Assistant: "Great choice! I can recommend several excellent Italian restaurants in Cambridge that offer good value. Would you like me to suggest options in a particular area of the city?"
+""",
+            "attraction": """
+EXAMPLES:
+User: "What attractions can I visit in Cambridge?"
+Assistant: "Cambridge has many wonderful attractions! Some popular options include the University colleges, the Fitzwilliam Museum, and punting on the River Cam. What type of attractions interest you most - historical, cultural, or outdoor activities?"
+
+User: "I'm interested in historical sites"
+Assistant: "Perfect! Cambridge is rich in history. I'd recommend visiting King's College Chapel, Trinity College, and the Cambridge University Botanic Garden. Would you like specific information about any of these, or help planning your visit?"
+""",
+            "booking": """
+EXAMPLES:
+User: "Can you book that for me?"
+Assistant: "Absolutely! I'd be happy to make that booking for you. Let me confirm the details: [specific booking details]. Is this correct, and would you like me to proceed with the reservation?"
+
+User: "Yes, please book it for Wednesday for 5 people"
+Assistant: "Perfect! I'll book that for Wednesday for 5 people. Let me process this reservation and provide you with a confirmation number."
+""",
+            "general": """
+EXAMPLES:
+User: "Hello, I need help with travel planning"
+Assistant: "Hello! I'd be delighted to help you with your travel planning in Cambridge. I can assist with hotels, restaurants, attractions, transportation, and more. What would you like to start with?"
+
+User: "Thank you for all the help!"
+Assistant: "You're very welcome! I'm glad I could help you with your travel needs. If you need any further assistance during your stay in Cambridge, please don't hesitate to ask. Have a wonderful time!"
+"""
+        }
+        
+        return examples.get(request_type, examples["general"])
     
     def _assess_relevance(self, content: str, query: str) -> float:
         """Assess relevance of content to query."""
@@ -577,6 +680,7 @@ class ResponseController:
             safety_penalty = len(candidate.safety_flags) * 0.1
             
             total_score = quality_score + speed_bonus - safety_penalty
+            logger.debug(f"   Candidate {candidate.generation_strategy}: quality={quality_score:.3f}, speed_bonus={speed_bonus:.3f}, safety_penalty={safety_penalty:.3f}, total={total_score:.3f}")
             scored_candidates.append((candidate, total_score))
         
         # Select highest scoring candidate

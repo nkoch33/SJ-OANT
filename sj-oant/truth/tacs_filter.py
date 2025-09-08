@@ -13,6 +13,7 @@ The TACS filter:
 5. Adapts filtering thresholds based on context and query type
 
 Key responsibilities:
+- Memory retrieval from storage based on query relevance
 - Token-level relevance scoring and filtering
 - Span-level coherence analysis
 - Distractor and noise detection
@@ -24,10 +25,95 @@ preventing irrelevant or misleading information from reaching the verification
 stage and potentially corrupting the memory store.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import json
 from langchain_core.prompts import ChatPromptTemplate
-from memory.typed_store import MemoryState
+from memory.typed_store import MemoryState, InMemoryStore
+from core.types import MemoryTier
+
+
+class MemoryRetriever:
+    """
+    Component of TACS filter responsible for retrieving relevant memory from storage.
+    
+    This is the critical missing piece that was causing 0 retrievals - we need to
+    actually search the memory store for relevant information based on the user query.
+    """
+    
+    def __init__(self, memory_store: InMemoryStore, retrieval_limit: int = 10):
+        """
+        Initialize the memory retriever.
+        
+        Args:
+            memory_store: Reference to the memory store for retrieval
+            retrieval_limit: Maximum number of records to retrieve per query
+        """
+        self.memory_store = memory_store
+        self.retrieval_limit = retrieval_limit
+    
+    def retrieve_relevant_memory(self, user_input: str) -> List[Any]:
+        """
+        Retrieve relevant memory records from the store based on user input.
+        
+        Args:
+            user_input: User's current input to match against stored memory
+            
+        Returns:
+            List of relevant MemoryRecord objects
+        """
+        print("🔍 Memory Retriever: Searching for relevant memory...")
+        
+        try:
+            # Search across all tiers for relevant content
+            relevant_records = self.memory_store.search(
+                query=user_input,
+                limit=self.retrieval_limit
+            )
+            
+            print(f"   Retrieved {len(relevant_records)} relevant memory records")
+            
+            # Log what we found
+            for i, record in enumerate(relevant_records[:3]):  # Show first 3
+                print(f"   {i+1}. [{record.tier.value}] {record.payload[:50]}...")
+            
+            if len(relevant_records) > 3:
+                print(f"   ... and {len(relevant_records) - 3} more")
+            
+            return relevant_records
+            
+        except Exception as e:
+            print(f"   Error retrieving memory: {e}")
+            return []
+    
+    def execute(self, state: MemoryState) -> MemoryState:
+        """
+        Execute memory retrieval and update state with retrieved content.
+        
+        Args:
+            state: Current memory state
+            
+        Returns:
+            Updated memory state with retrieved memory records
+        """
+        # Retrieve relevant memory from store
+        retrieved_records = self.retrieve_relevant_memory(state["user_input"])
+        
+        # Add retrieved records to state for downstream processing
+        # Convert to the format expected by the state
+        updated_state = state.copy()
+        
+        # Add retrieved records to appropriate tiers in state
+        for record in retrieved_records:
+            if record.tier == MemoryTier.L1_WORKING:
+                updated_state.setdefault("L1", []).append(record)
+            elif record.tier == MemoryTier.L2_SUMMARIZED:
+                updated_state.setdefault("L2", []).append(record)
+            elif record.tier == MemoryTier.L3_ARCHIVAL:
+                updated_state.setdefault("L3", []).append(record)
+            elif record.tier == MemoryTier.FLAGGED:
+                updated_state.setdefault("flagged", []).append(record)
+        
+        return updated_state
 
 
 class RedundancyFilter:
@@ -227,34 +313,47 @@ class TACSFilter:
     """
     Token-level Adaptive Context Screening Filter.
     
-    Main TACS filter that coordinates redundancy filtering, relevance scoring,
-    and other context screening operations to prepare clean input for verification.
+    Main TACS filter that coordinates memory retrieval, redundancy filtering, 
+    relevance scoring, and other context screening operations to prepare 
+    clean input for verification.
+    
+    This is the FIXED version that includes memory retrieval functionality.
     """
     
-    def __init__(self, llm, relevance_threshold: float = 0.5):
+    def __init__(self, llm, memory_store: InMemoryStore, relevance_threshold: float = 0.5):
         """
         Initialize the TACS filter with all sub-components.
         
         Args:
             llm: Language model instance
+            memory_store: Reference to memory store for retrieval
             relevance_threshold: Minimum relevance score for content filtering
         """
+        self.memory_retriever = MemoryRetriever(memory_store)
         self.redundancy_filter = RedundancyFilter(llm)
         self.relevance_filter = ContextualRelevanceFilter(relevance_threshold)
     
     def execute(self, state: MemoryState) -> MemoryState:
         """
-        Execute the complete TACS filtering pipeline.
+        Execute the complete TACS filtering pipeline with memory retrieval.
+        
+        This is the FIXED version that actually retrieves relevant memory
+        from the store instead of just filtering existing state.
         
         Args:
             state: Current memory state
             
         Returns:
-            Updated memory state with filtered and cleaned context
+            Updated memory state with retrieved and filtered context
         """
         print("🎯 TACS Filter: Screening context and filtering noise...")
         
-        # First, check for redundancy
+        # STEP 1: Retrieve relevant memory from store (THIS WAS MISSING!)
+        print("   Step 1: Retrieving relevant memory from store...")
+        state = self.memory_retriever.execute(state)
+        
+        # STEP 2: Check for redundancy
+        print("   Step 2: Checking for redundancy...")
         # Convert MemoryRecord objects to strings for redundancy check
         l1_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L1", [])]
         redundancy_state = {
@@ -263,25 +362,28 @@ class TACSFilter:
         }
         redundancy_state = self.redundancy_filter.execute(redundancy_state)
         
-        # Then, filter memory context by relevance
+        # STEP 3: Filter memory context by relevance
+        print("   Step 3: Filtering by relevance...")
         context = {"user_input": state["user_input"]}
         
         # Convert MemoryRecord objects to strings for filtering
         l1_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L1", [])]
         l2_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L2", [])]
+        l3_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L3", [])]
         
         # Filter each memory tier by relevance (on string content)
         filtered_l1_strings = self.relevance_filter.filter_by_relevance(l1_strings, context)
         filtered_l2_strings = self.relevance_filter.filter_by_relevance(l2_strings, context)
+        filtered_l3_strings = self.relevance_filter.filter_by_relevance(l3_strings, context)
         
         # Keep original MemoryRecord objects that passed filtering
         state["L1"] = [record for record in state.get("L1", []) 
                        if (record.payload if hasattr(record, 'payload') else str(record)) in filtered_l1_strings]
         state["L2"] = [record for record in state.get("L2", []) 
                        if (record.payload if hasattr(record, 'payload') else str(record)) in filtered_l2_strings]
-        # L3 is typically high-confidence facts, so filter more conservatively
-        # state["L3"] = self.relevance_filter.filter_by_relevance(state["L3"], context)
+        state["L3"] = [record for record in state.get("L3", []) 
+                       if (record.payload if hasattr(record, 'payload') else str(record)) in filtered_l3_strings]
         
-        print(f"   Filtered context - L1: {len(state['L1'])} items, L2: {len(state['L2'])} items")
+        print(f"   Final filtered context - L1: {len(state['L1'])} items, L2: {len(state['L2'])} items, L3: {len(state['L3'])} items")
         
         return state

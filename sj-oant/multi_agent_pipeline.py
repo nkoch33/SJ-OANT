@@ -65,10 +65,14 @@ class MultiAgentTMMPipeline:
         
         # Initialize all agents in the chain
         self.strategic_planner = create_strategic_planner("default", self.config)
-        self.tacs_filter = TACSFilter(self.llm, self.config.get("relevance_threshold", 0.5))
+        self.tacs_filter = TACSFilter(self.llm, self.memory_store, self.config.get("relevance_threshold", 0.5))
         self.truth_verifier = RuleBasedVerifier()
         self.memory_curator = WriterEditor(self.llm, self.memory_store)
         self.responder = create_responder(["template_based"], self.config, self.llm)
+        
+        # Track metrics
+        self.truth_verification_calls = 0
+        self.contradiction_detections = 0
         
         logger.info("Multi-agent TMM pipeline initialized with all agents")
     
@@ -139,10 +143,19 @@ class MultiAgentTMMPipeline:
                     record for record in filtered_state.get("L1", []) + filtered_state.get("L2", [])
                 ]
             }
+            
+            # Track truth verification call
+            self.truth_verification_calls += 1
+            
             state.verification_scores = self.truth_verifier.verify(
                 content=state.processed_input,
                 context=verification_context
             )
+            
+            # Check for contradictions
+            if state.verification_scores.truth_score < 0.5:
+                self.contradiction_detections += 1
+                logger.info(f"🚨 Contradiction detected! Truth score: {state.verification_scores.truth_score:.2f}")
             
             # Agent 4: Memory Curator (Writer/Editor)
             logger.info("📝 Memory Curator: Managing memory operations...")
@@ -188,6 +201,14 @@ class MultiAgentTMMPipeline:
         except Exception as e:
             logger.error(f"Fallback response failed: {e}")
             return "I apologize, but I'm experiencing technical difficulties. Please try again."
+    
+    def get_truth_verification_calls(self) -> int:
+        """Get the number of truth verification calls made."""
+        return self.truth_verification_calls
+    
+    def get_contradiction_detections(self) -> int:
+        """Get the number of contradictions detected."""
+        return self.contradiction_detections
 
 def create_multi_agent_pipeline(api_key: str, config: Dict[str, Any] = None) -> MultiAgentTMMPipeline:
     """

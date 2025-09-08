@@ -132,6 +132,56 @@ class InMemoryStore(BaseMemoryStore):
         )
         return self.add(record)
     
+    def add_to_l2(self, content: str, scores: Optional[ConfidenceScores] = None, **kwargs) -> RecordID:
+        """Add content directly to L2 summarized memory."""
+        from core.types import MemoryRecord, ConfidenceScores, Provenance
+        from uuid import uuid4
+        from datetime import datetime, timezone
+        
+        if scores is None:
+            scores = ConfidenceScores()
+        
+        record = MemoryRecord(
+            id=uuid4(),
+            payload=content,
+            tier=MemoryTier.L2_SUMMARIZED,
+            status=MemoryStatus.VERIFIED,
+            scores=scores,
+            provenance=Provenance(
+                source="direct_add",
+                source_type="system",
+                pipeline_stage="memory_store",
+                processing_agent="InMemoryStore"
+            ),
+            **kwargs
+        )
+        return self.add(record)
+    
+    def add_to_l3(self, content: str, scores: Optional[ConfidenceScores] = None, **kwargs) -> RecordID:
+        """Add content directly to L3 archival memory."""
+        from core.types import MemoryRecord, ConfidenceScores, Provenance
+        from uuid import uuid4
+        from datetime import datetime, timezone
+        
+        if scores is None:
+            scores = ConfidenceScores()
+        
+        record = MemoryRecord(
+            id=uuid4(),
+            payload=content,
+            tier=MemoryTier.L3_ARCHIVAL,
+            status=MemoryStatus.VERIFIED,
+            scores=scores,
+            provenance=Provenance(
+                source="direct_add",
+                source_type="system",
+                pipeline_stage="memory_store",
+                processing_agent="InMemoryStore"
+            ),
+            **kwargs
+        )
+        return self.add(record)
+    
     def add_to_flagged(self, content: str, reason: str, metadata: Dict[str, Any] = None) -> RecordID:
         """Add content to flagged memory tier."""
         from core.types import MemoryRecord, ConfidenceScores, Provenance
@@ -538,6 +588,11 @@ class InMemoryStore(BaseMemoryStore):
                 "L2": metrics.get("tier_l2_summarized_count", 0), 
                 "L3": metrics.get("tier_l3_archival_count", 0),
                 "flagged": metrics.get("tier_flagged_count", 0)
+            },
+            "memory_operations": {
+                "stores": metrics.get("add", 0),
+                "retrievals": metrics.get("search", 0),
+                "updates": metrics.get("update", 0)
             }
         }
     

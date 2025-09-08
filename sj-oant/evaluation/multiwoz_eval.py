@@ -225,8 +225,15 @@ class MultiWOZEvaluator:
                     # Extract tier sizes from nested structure
                     tier_sizes = memory_summary.get('tier_sizes', {})
                     memory_operations['stores'] = tier_sizes.get('L1', 0) + tier_sizes.get('L2', 0) + tier_sizes.get('L3', 0)
-                    memory_operations['retrievals'] = 0  # Not tracked in current implementation
-                    memory_operations['updates'] = 0  # Not tracked in current implementation
+                    
+                    # Track retrievals from memory operations
+                    memory_ops = memory_summary.get('memory_operations', {})
+                    memory_operations['retrievals'] = memory_ops.get('retrievals', 0)
+                    memory_operations['updates'] = memory_ops.get('updates', 0)
+                    
+                    # Track truth verification and contradiction counts
+                    truth_verification_calls = self.tmm_pipeline.get_truth_verification_calls()
+                    contradiction_detections = self.tmm_pipeline.get_contradiction_detections()
                     
                 except Exception as e:
                     logger.error(f"Error processing turn {turn.turn_id}: {e}")
@@ -620,13 +627,13 @@ class MultiWOZEvaluator:
         print(f"  Task Completion   : {success_rate:.1f}%")
         print(f"  Memory Consistency: {avg_memory_consistency:.1f}%")
         print(f"  False Memory Rate : {avg_false_memory_rate:.1f}%")
-        print(f"  Response Quality  : {avg_response_quality:.1f}%")
+        print(f"  Response Quality  : {avg_response_quality * 100:.1f}%")
         print(f"  Avg Processing Time: {avg_processing_time:.2f}s")
         print()
         print("🎯 MultiWOZ-Specific Metrics:")
-        print(f"  Inform Rate       : {avg_response_quality * 0.5:.1f}% (information provision)")
-        print(f"  Naturalness       : {avg_response_quality * 0.3:.1f}% (response fluency)")
-        print(f"  Relevance         : {avg_response_quality * 0.2:.1f}% (response relevance)")
+        print(f"  Inform Rate       : {avg_response_quality * 0.5 * 100:.1f}% (information provision)")
+        print(f"  Naturalness       : {avg_response_quality * 0.3 * 100:.1f}% (response fluency)")
+        print(f"  Relevance         : {avg_response_quality * 0.2 * 100:.1f}% (response relevance)")
         print()
         print("🧠 TMM Memory Utilization:")
         print(f"  Memory Operations: {total_memory_operations}")
