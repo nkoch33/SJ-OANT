@@ -13,6 +13,7 @@ Design Features:
 """
 
 import logging
+import re
 from typing import Dict, Any, List, Optional, Tuple
 from abc import ABC, abstractmethod
 
@@ -369,12 +370,114 @@ class RuleBasedVerifier(BaseVerifier):
             elif negative in content1 and positive in content2:
                 contradiction_score += 0.8
         
-        # TODO: Add more sophisticated contradiction detection
-        # - Named entity conflicts (e.g., different dates for same event)
-        # - Numerical conflicts (e.g., different values for same measure)
-        # - Semantic contradictions using embeddings
+        # Enhanced contradiction detection
+        contradiction_score += self._detect_numerical_contradictions(content1, content2)
+        contradiction_score += self._detect_temporal_contradictions(content1, content2)
+        contradiction_score += self._detect_entity_contradictions(content1, content2)
+        contradiction_score += self._detect_semantic_contradictions(content1, content2)
         
         return min(1.0, contradiction_score)
+    
+    def _detect_numerical_contradictions(self, content1: str, content2: str) -> float:
+        """Detect numerical contradictions (e.g., different prices, quantities)."""
+        import re
+        
+        # Extract numbers with context
+        numbers1 = re.findall(r'(\d+)\s*(people|nights|rooms|stars|price|cost|pounds?|£)', content1.lower())
+        numbers2 = re.findall(r'(\d+)\s*(people|nights|rooms|stars|price|cost|pounds?|£)', content2.lower())
+        
+        contradiction_score = 0.0
+        
+        # Check for conflicting numbers in similar contexts
+        for num1, context1 in numbers1:
+            for num2, context2 in numbers2:
+                if context1 == context2 and num1 != num2:
+                    # Same context but different numbers = contradiction
+                    contradiction_score += 0.6
+                    logger.debug(f"Numerical contradiction: {num1} vs {num2} {context1}")
+        
+        return contradiction_score
+    
+    def _detect_temporal_contradictions(self, content1: str, content2: str) -> float:
+        """Detect temporal contradictions (e.g., different days, times)."""
+        days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        times = re.findall(r'\d{1,2}:\d{2}', content1 + ' ' + content2)
+        
+        contradiction_score = 0.0
+        
+        # Check for conflicting days
+        days1 = [day for day in days if day in content1.lower()]
+        days2 = [day for day in days if day in content2.lower()]
+        
+        if days1 and days2 and days1[0] != days2[0]:
+            contradiction_score += 0.7
+            logger.debug(f"Temporal contradiction: {days1[0]} vs {days2[0]}")
+        
+        # Check for conflicting times (if both mention times)
+        if len(times) >= 2:
+            time1, time2 = times[0], times[1]
+            if time1 != time2:
+                contradiction_score += 0.5
+                logger.debug(f"Time contradiction: {time1} vs {time2}")
+        
+        return contradiction_score
+    
+    def _detect_entity_contradictions(self, content1: str, content2: str) -> float:
+        """Detect entity contradictions (e.g., different locations, names)."""
+        contradiction_score = 0.0
+        
+        # Location contradictions
+        locations = ['cambridge', 'birmingham', 'london', 'manchester', 'east', 'west', 'north', 'south']
+        locs1 = [loc for loc in locations if loc in content1.lower()]
+        locs2 = [loc for loc in locations if loc in content2.lower()]
+        
+        if locs1 and locs2 and locs1[0] != locs2[0]:
+            contradiction_score += 0.6
+            logger.debug(f"Location contradiction: {locs1[0]} vs {locs2[0]}")
+        
+        # Hotel/venue name contradictions
+        hotel_pattern = r'\b[A-Z][a-z]+\b'
+        hotels1 = re.findall(hotel_pattern, content1)
+        hotels2 = re.findall(hotel_pattern, content2)
+        
+        # Check if different hotel names are mentioned
+        if hotels1 and hotels2 and hotels1[0] != hotels2[0]:
+            contradiction_score += 0.5
+            logger.debug(f"Hotel contradiction: {hotels1[0]} vs {hotels2[0]}")
+        
+        return contradiction_score
+    
+    def _detect_semantic_contradictions(self, content1: str, content2: str) -> float:
+        """Detect semantic contradictions using keyword analysis."""
+        contradiction_score = 0.0
+        
+        # Booking status contradictions
+        booking_positive = ['book', 'reserve', 'confirm', 'yes', 'available']
+        booking_negative = ['cancel', 'unavailable', 'no', 'full', 'booked']
+        
+        pos1 = any(word in content1.lower() for word in booking_positive)
+        neg1 = any(word in content1.lower() for word in booking_negative)
+        pos2 = any(word in content2.lower() for word in booking_positive)
+        neg2 = any(word in content2.lower() for word in booking_negative)
+        
+        if (pos1 and neg2) or (neg1 and pos2):
+            contradiction_score += 0.7
+            logger.debug("Booking status contradiction detected")
+        
+        # Price range contradictions
+        price_cheap = ['cheap', 'budget', 'affordable', 'low cost']
+        price_expensive = ['expensive', 'luxury', 'high end', 'premium']
+        
+        cheap1 = any(word in content1.lower() for word in price_cheap)
+        exp1 = any(word in content1.lower() for word in price_expensive)
+        cheap2 = any(word in content2.lower() for word in price_cheap)
+        exp2 = any(word in content2.lower() for word in price_expensive)
+        
+        if (cheap1 and exp2) or (exp1 and cheap2):
+            contradiction_score += 0.6
+            logger.debug("Price range contradiction detected")
+        
+        return contradiction_score
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get verification performance metrics."""

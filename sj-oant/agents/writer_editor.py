@@ -95,30 +95,84 @@ class MemoryCurationAgent:
                 "metadata": {"flag_reason": "contradiction"}
             })
         
+        # Get dynamic thresholds based on conversation context
+        thresholds = self._get_dynamic_thresholds(content)
+        confidence = verification_result.get("confidence", 0.0)
+        truth_score = verification_result.get("truth_score", 0.0)
+        
         # If low confidence, flag for review
-        elif verification_result.get("confidence", 0.0) < 0.5:
+        if confidence < thresholds["flag_threshold"]:
             decision.update({
                 "target_tier": "flagged",
-                "reason": f"Low confidence: {verification_result.get('confidence', 0.0):.2f}",
-                "metadata": {"flag_reason": "low_confidence"}
+                "reason": f"Low confidence: {confidence:.2f} (threshold: {thresholds['flag_threshold']:.2f})",
+                "metadata": {"flag_reason": "low_confidence", "dynamic_threshold": True}
             })
         
         # If high confidence and verified, consider for L2/L3
-        elif verification_result.get("confidence", 0.0) > 0.6:  # Lowered from 0.7
-            if verification_result.get("truth_score", 0.0) > 0.75:  # Lowered from 0.85 for more L3 storage
+        elif confidence > thresholds["l2_threshold"]:
+            if truth_score > thresholds["l3_threshold"]:
                 decision.update({
                     "target_tier": "L3",  # Very high quality content goes to L3
-                    "reason": "Very high confidence and truth score",
-                    "metadata": {"quality": "very_high"}
+                    "reason": f"Very high confidence ({confidence:.2f}) and truth score ({truth_score:.2f})",
+                    "metadata": {"quality": "very_high", "dynamic_threshold": True}
                 })
-            elif verification_result.get("truth_score", 0.0) > 0.5:  # High quality -> L2
+            elif truth_score > thresholds["l2_truth_threshold"]:
                 decision.update({
-                    "target_tier": "L2",  # High-quality content goes to L2 first
-                    "reason": "High confidence and truth score",
-                    "metadata": {"quality": "high"}
+                    "target_tier": "L2",  # High-quality content goes to L2
+                    "reason": f"High confidence ({confidence:.2f}) and truth score ({truth_score:.2f})",
+                    "metadata": {"quality": "high", "dynamic_threshold": True}
                 })
         
         return decision
+    
+    def _get_dynamic_thresholds(self, content: str) -> Dict[str, float]:
+        """
+        Get dynamic thresholds based on conversation context.
+        
+        Args:
+            content: Content being processed
+            
+        Returns:
+            Dictionary of dynamic thresholds
+        """
+        # Base thresholds
+        base_thresholds = {
+            "flag_threshold": 0.5,
+            "l2_threshold": 0.6,
+            "l2_truth_threshold": 0.5,
+            "l3_threshold": 0.75
+        }
+        
+        # Adjust thresholds based on content characteristics
+        content_lower = content.lower()
+        
+        # More lenient for booking/confirmation content (important for user experience)
+        if any(word in content_lower for word in ["book", "reserve", "confirm", "yes", "no", "cancel"]):
+            base_thresholds["l2_threshold"] -= 0.05  # Lower threshold for booking content
+            base_thresholds["l3_threshold"] -= 0.05
+        
+        # More strict for factual information (dates, times, prices)
+        if any(word in content_lower for word in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "price", "cost", "£"]):
+            base_thresholds["l2_threshold"] += 0.05  # Higher threshold for factual content
+            base_thresholds["l3_threshold"] += 0.05
+        
+        # More lenient for conversational content (greetings, thanks)
+        if any(word in content_lower for word in ["hello", "hi", "thank", "goodbye", "bye", "please"]):
+            base_thresholds["flag_threshold"] -= 0.1  # More lenient for conversational content
+        
+        # More strict for multi-domain content (complex conversations)
+        domain_count = sum(1 for domain in ["hotel", "train", "taxi", "restaurant", "attraction"] if domain in content_lower)
+        if domain_count > 1:
+            base_thresholds["l2_threshold"] += 0.03  # Slightly higher for multi-domain
+            base_thresholds["l3_threshold"] += 0.03
+        
+        # Ensure thresholds stay within reasonable bounds
+        base_thresholds["flag_threshold"] = max(0.2, min(0.6, base_thresholds["flag_threshold"]))
+        base_thresholds["l2_threshold"] = max(0.5, min(0.8, base_thresholds["l2_threshold"]))
+        base_thresholds["l2_truth_threshold"] = max(0.4, min(0.7, base_thresholds["l2_truth_threshold"]))
+        base_thresholds["l3_threshold"] = max(0.6, min(0.9, base_thresholds["l3_threshold"]))
+        
+        return base_thresholds
     
     def execute_storage_decision(self, content: str, decision: Dict[str, Any]) -> None:
         """
