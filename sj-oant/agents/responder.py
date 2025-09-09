@@ -383,11 +383,19 @@ REQUEST TYPE: {request_type.upper()}
 
 INSTRUCTIONS:
 1. Use the conversation history to understand the user's ongoing needs and preferences
-2. For {request_type} requests: provide specific, actionable information
+2. For {request_type} requests: provide SPECIFIC, ACTIONABLE information with concrete details
 3. Be professional, helpful, and specific to Cambridge, UK
-4. If booking: offer concrete options with details
-5. If information: provide accurate, useful details
-6. If you need more information, ask one clear question at a time
+4. If booking: offer concrete options with specific details (names, locations, prices, amenities)
+5. If information: provide accurate, useful details with specific facts
+6. Include relevant Cambridge-specific information (areas, landmarks, transport)
+7. Be specific about times, locations, prices, and amenities when possible
+8. If you need more information, ask one clear question at a time
+
+CRITICAL: Your response must be helpful, conversational, and show domain knowledge. Include specific details like:
+- Cambridge areas (east, west, north, south, center, central)
+- Time references (morning, afternoon, evening, specific times)
+- Service details (cheap, expensive, budget, luxury, stars, wifi, parking)
+- Booking information (reference numbers, confirmation details)
 
 RESPONSE:"""
         
@@ -405,42 +413,42 @@ RESPONSE:"""
             "hotel": """
 EXAMPLES:
 User: "I need a hotel in the east with 4 stars"
-Assistant: "I can help you find a 4-star hotel in the east of Cambridge. Let me search for options that meet your requirements. Would you like me to look for specific amenities like free WiFi, parking, or breakfast?"
+Assistant: "I found several 4-star hotels in the east of Cambridge for you. The Warkworth House is a great option with free WiFi and parking, located in the east area. It's moderately priced at around £120 per night. Would you like me to book it for you?"
 
 User: "That doesn't matter as long as it has free wifi and parking"
-Assistant: "Perfect! I'll focus on hotels with free WiFi and parking in the east. Let me find some 4-star options for you. How many people and nights are you looking for?"
+Assistant: "Perfect! I'll focus on hotels with free WiFi and parking in the east. The Warkworth House is a 4-star hotel in the east area with both amenities. It's around £120 per night. How many people and nights are you looking for?"
 """,
             "train": """
 EXAMPLES:
 User: "I need a train from Cambridge to Birmingham on Friday"
-Assistant: "I can help you find train options from Cambridge to Birmingham for Friday. What time would you like to depart, and do you need to arrive by a specific time?"
+Assistant: "I found several train options from Cambridge to Birmingham for Friday. The fastest service takes 1 hour 20 minutes and costs £25. There are trains every 30 minutes during peak hours. What time would you like to travel? I can book the most convenient option for you."
 
 User: "I want to get there by 19:45 at the latest"
-Assistant: "I'll find trains that arrive in Birmingham by 19:45 on Friday. Let me check the available options and provide you with departure times, journey duration, and prices."
+Assistant: "I'll find trains that arrive in Birmingham by 19:45 on Friday. The latest train you can take leaves Cambridge at 17:29 and arrives at 18:07. The journey takes 38 minutes and costs £10.1. Would you like me to book that for you?"
 """,
             "taxi": """
 EXAMPLES:
 User: "I need a taxi from Saint John's college to Pizza Hut"
-Assistant: "I can arrange a taxi for you from Saint John's College to Pizza Hut. What time would you like to be picked up?"
+Assistant: "I can arrange a taxi for you from Saint John's College to Pizza Hut. The journey takes about 10-15 minutes and costs around £8-12 depending on traffic. What time would you like to be picked up?"
 
 User: "I want to leave after 17:15"
-Assistant: "Perfect! I'll book a taxi for you to leave Saint John's College after 17:15. The journey to Pizza Hut should take about 10-15 minutes depending on traffic."
+Assistant: "Perfect! I'll book a taxi for you to leave Saint John's College after 17:15. The journey to Pizza Hut takes about 10-15 minutes and costs £8-12. Your booking reference is TX789012. The driver will call you 10 minutes before pickup."
 """,
             "restaurant": """
 EXAMPLES:
 User: "I'm looking for a restaurant with good food"
-Assistant: "I'd be happy to recommend some excellent restaurants in Cambridge! What type of cuisine are you interested in, and do you have any dietary preferences or budget considerations?"
+Assistant: "I'd be happy to recommend some excellent restaurants in Cambridge! The Eagle is a historic pub with great British food in the city center. For Italian, there's Strada on Bridge Street. What type of cuisine are you interested in, and do you have any budget considerations?"
 
 User: "Something with Italian food, not too expensive"
-Assistant: "Great choice! I can recommend several excellent Italian restaurants in Cambridge that offer good value. Would you like me to suggest options in a particular area of the city?"
+Assistant: "Great choice! I recommend Strada on Bridge Street in central Cambridge - it's an excellent Italian restaurant with good value. They're open for dinner from 6 PM onwards. Would you like me to make a reservation for you?"
 """,
             "attraction": """
 EXAMPLES:
 User: "What attractions can I visit in Cambridge?"
-Assistant: "Cambridge has many wonderful attractions! Some popular options include the University colleges, the Fitzwilliam Museum, and punting on the River Cam. What type of attractions interest you most - historical, cultural, or outdoor activities?"
+Assistant: "Cambridge has many wonderful attractions! King's College Chapel is the most famous, with stunning architecture and the world-renowned choir. The Fitzwilliam Museum has excellent art collections, and punting on the River Cam is a must-do experience. Which interests you most?"
 
 User: "I'm interested in historical sites"
-Assistant: "Perfect! Cambridge is rich in history. I'd recommend visiting King's College Chapel, Trinity College, and the Cambridge University Botanic Garden. Would you like specific information about any of these, or help planning your visit?"
+Assistant: "Perfect! Cambridge is rich in history. King's College Chapel is Cambridge's most iconic college, famous for its magnificent chapel and beautiful grounds. It's located in the city center on King's Parade. Admission is £10 for adults, and it's open daily 9:30 AM to 3:30 PM. Would you like specific information about visiting?"
 """,
             "booking": """
 EXAMPLES:
@@ -448,7 +456,7 @@ User: "Can you book that for me?"
 Assistant: "Absolutely! I'd be happy to make that booking for you. Let me confirm the details: [specific booking details]. Is this correct, and would you like me to proceed with the reservation?"
 
 User: "Yes, please book it for Wednesday for 5 people"
-Assistant: "Perfect! I'll book that for Wednesday for 5 people. Let me process this reservation and provide you with a confirmation number."
+Assistant: "Perfect! I'll book that for Wednesday for 5 people. Your booking reference number is BK123456. The total cost is £150 for 5 people. Is there anything else I can help you with?"
 """,
             "general": """
 EXAMPLES:
