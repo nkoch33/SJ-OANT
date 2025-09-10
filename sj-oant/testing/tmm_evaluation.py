@@ -82,10 +82,10 @@ class TMMEvaluator:
         samples = []
         for dialogue_id in selected_ids:
             dialogue = data[dialogue_id]
-            # Extract user utterances
+            # Extract user utterances (odd-indexed turns are user turns)
             user_turns = []
-            for turn in dialogue["log"]:
-                if turn["speaker"] == "USER":
+            for i, turn in enumerate(dialogue["log"]):
+                if i % 2 == 0:  # Even indices (0, 2, 4...) are user turns
                     user_turns.append(turn["text"])
             
             if user_turns:
@@ -153,30 +153,40 @@ class TMMEvaluator:
     
     def _load_multidogo_samples(self, num_examples: int) -> List[Dict]:
         """Load MultiDoGO samples."""
-        data_path = "data/multidogo/airline.tsv"
-        df = pd.read_csv(data_path, sep='\t')
+        # Try different MultiDoGO files
+        data_files = ["data/multidogo/airline.tsv", "data/multidogo/fastfood.tsv", "data/multidogo/airline_annotated.tsv"]
         
-        # Get random sample of conversations
-        conversation_ids = df['conversationId'].unique()
-        random.shuffle(conversation_ids)
-        selected_ids = conversation_ids[:num_examples]
+        all_samples = []
+        for data_path in data_files:
+            try:
+                # Use proper TSV parsing with error handling
+                df = pd.read_csv(data_path, sep='\t', on_bad_lines='skip')
+                
+                # Get random sample of conversations
+                conversation_ids = df['conversationId'].unique()
+                random.shuffle(conversation_ids)
+                selected_ids = conversation_ids[:min(10, len(conversation_ids))]  # Take up to 10 per file
+                
+                for conversation_id in selected_ids:
+                    # Extract user utterances
+                    user_turns = []
+                    for _, row in df[df['conversationId'] == conversation_id].iterrows():
+                        if row['authorRole'] == 'customer':
+                            user_turns.append(row['utterance'])
+                    
+                    if user_turns:
+                        all_samples.append({
+                            "dialogue_id": conversation_id,
+                            "user_turns": user_turns,
+                            "benchmark": "multidogo"
+                        })
+            except Exception as e:
+                logger.warning(f"Could not load {data_path}: {e}")
+                continue
         
-        samples = []
-        for conversation_id in selected_ids:
-            # Extract user utterances
-            user_turns = []
-            for _, row in df[df['conversationId'] == conversation_id].iterrows():
-                if row['authorRole'] == 'customer':
-                    user_turns.append(row['utterance'])
-            
-            if user_turns:
-                samples.append({
-                    "dialogue_id": conversation_id,
-                    "user_turns": user_turns,
-                    "benchmark": "multidogo"
-                })
-        
-        return samples[:num_examples]
+        # Shuffle and return requested number
+        random.shuffle(all_samples)
+        return all_samples[:num_examples]
     
     def evaluate_tmm(self, samples: List[Dict], benchmark: str) -> Dict[str, Any]:
         """Evaluate TMM system on samples."""
