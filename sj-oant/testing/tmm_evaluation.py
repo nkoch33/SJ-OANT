@@ -159,8 +159,35 @@ class TMMEvaluator:
         all_samples = []
         for data_path in data_files:
             try:
-                # Use proper TSV parsing with error handling
-                df = pd.read_csv(data_path, sep='\t', on_bad_lines='skip')
+                # Use more robust TSV parsing with proper quoting
+                df = pd.read_csv(data_path, sep='\t', quoting=3, on_bad_lines='skip', engine='python')
+                
+                # Fix column names if they're concatenated
+                if len(df.columns) == 1 and 'conversationId,turnNumber,utteranceId,utterance,authorRole' in df.columns[0]:
+                    # The entire file is malformed - try to parse it manually
+                    with open(data_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                    
+                    # Parse header and data
+                    header = lines[0].strip().split('\t')
+                    if len(header) == 1:
+                        header = header[0].split(',')
+                    
+                    data_rows = []
+                    for line in lines[1:]:
+                        row = line.strip().split('\t')
+                        if len(row) == 1:
+                            row = row[0].split(',')
+                        if len(row) >= 5:  # Ensure we have all required columns
+                            data_rows.append(row[:5])  # Take first 5 columns
+                    
+                    df = pd.DataFrame(data_rows, columns=header[:5])
+                
+                # Check if required columns exist
+                required_cols = ['conversationId', 'authorRole', 'utterance']
+                if not all(col in df.columns for col in required_cols):
+                    logger.warning(f"Missing required columns in {data_path}. Available: {list(df.columns)}")
+                    continue
                 
                 # Get random sample of conversations
                 conversation_ids = df['conversationId'].unique()
@@ -170,9 +197,10 @@ class TMMEvaluator:
                 for conversation_id in selected_ids:
                     # Extract user utterances
                     user_turns = []
-                    for _, row in df[df['conversationId'] == conversation_id].iterrows():
+                    conv_data = df[df['conversationId'] == conversation_id]
+                    for _, row in conv_data.iterrows():
                         if row['authorRole'] == 'customer':
-                            user_turns.append(row['utterance'])
+                            user_turns.append(str(row['utterance']).strip())
                     
                     if user_turns:
                         all_samples.append({
@@ -318,12 +346,21 @@ class TMMEvaluator:
             print(f"✅ TMM System:")
             for metric in key_metrics:
                 if metric in tmm_results:
-                    if isinstance(tmm_results[metric], dict) and "total" in tmm_results[metric]:
-                        score = tmm_results[metric]["total"]
-                    elif isinstance(tmm_results[metric], dict):
-                        score = list(tmm_results[metric].values())[0]
-                    else:
-                        score = tmm_results[metric]
+                    score = tmm_results[metric]
+                    if isinstance(score, dict):
+                        if "total" in score:
+                            score = score["total"]
+                        elif "bleu" in score:
+                            score = score["bleu"]
+                        elif "rouge" in score:
+                            score = score["rouge"]
+                        elif "semantic_similarity" in score:
+                            score = score["semantic_similarity"]
+                        elif "task_completion" in score:
+                            score = score["task_completion"]
+                        else:
+                            # Get the first numeric value
+                            score = next((v for v in score.values() if isinstance(v, (int, float))), 0.0)
                     print(f"   {metric}: {score:.2f}%")
             print()
         

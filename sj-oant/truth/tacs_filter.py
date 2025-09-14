@@ -27,9 +27,140 @@ stage and potentially corrupting the memory store.
 
 from typing import Dict, Any, List, Optional
 import json
+import re
 from langchain_core.prompts import ChatPromptTemplate
 from memory.typed_store import MemoryState, InMemoryStore
 from core.types import MemoryTier
+
+
+class SlotExtractor:
+    """
+    Enhanced slot extraction component for better entity and slot recognition.
+    
+    This component extracts structured information (slots) from user input to improve
+    task completion and slot filling performance across benchmarks.
+    """
+    
+    def __init__(self):
+        """Initialize the slot extractor with domain-specific patterns."""
+        self.slot_patterns = {
+            # Time-related slots
+            "time": [
+                r'\b\d{1,2}:\d{2}\b',  # 14:30, 9:15
+                r'\b\d{1,2}\s*(am|pm|AM|PM)\b',  # 2pm, 9 AM
+                r'\b(morning|afternoon|evening|night)\b',
+                r'\b(tomorrow|today|yesterday)\b'
+            ],
+            # Date-related slots
+            "date": [
+                r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',  # 12/25/2024, 25-12-24
+                r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b',
+                r'\b\d{1,2}\s+(st|nd|rd|th)\b',  # 1st, 2nd, 3rd, 4th
+                r'\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b'
+            ],
+            # Location-related slots
+            "location": [
+                r'\b(east|west|north|south|center|central|downtown)\b',
+                r'\b(Cambridge|London|Birmingham|Manchester|Liverpool|Bristol|Leeds|Sheffield|Edinburgh|Glasgow)\b',
+                r'\b(street|road|avenue|boulevard|lane|way|drive)\b',
+                r'\b\d+\s+\w+\s+(street|road|avenue|boulevard|lane|way|drive)\b'
+            ],
+            # Price-related slots
+            "price": [
+                r'\b£\d+(?:\.\d{2})?\b',  # £120, £120.50
+                r'\b\d+(?:\.\d{2})?\s*(pounds?|euros?|dollars?)\b',
+                r'\b(cheap|expensive|budget|luxury|moderate|affordable)\b'
+            ],
+            # Number-related slots
+            "number": [
+                r'\b\d+\s*(people|guests|adults|children|rooms|nights|days|hours|minutes)\b',
+                r'\b(one|two|three|four|five|six|seven|eight|nine|ten)\s*(people|guests|adults|children|rooms|nights|days)\b'
+            ],
+            # Service-related slots
+            "service": [
+                r'\b(wifi|parking|restaurant|gym|pool|spa|bar|breakfast|dinner|lunch)\b',
+                r'\b(free|paid|included|available|not available)\b'
+            ],
+            # Transportation slots
+            "transport": [
+                r'\b(flight|train|taxi|bus|car|plane|railway|airport|station)\b',
+                r'\b(departure|arrival|pickup|dropoff|destination)\b'
+            ],
+            
+            # Enhanced intent patterns for MultiDoGO
+            "intent": [
+                r'\b(book|reserve|schedule|arrange|confirm|make a reservation)\b',
+                r'\b(find|search|look for|locate|get|show me|where is|where can i)\b',
+                r'\b(check|verify|confirm|validate|look up|see if|is there)\b',
+                r'\b(cancel|modify|change|update|reschedule|postpone)\b',
+                r'\b(help|assist|support|guide|can you help|i need help)\b',
+                r'\b(inform|tell|show|provide|give me|what is|how much)\b',
+                r'\b(need|want|require|request|ask for|i need|i want)\b',
+                r'\b(available|open|closed|operating hours|when is it open|is it available)\b',
+                r'\b(price|cost|fee|charge|rate|how much|what does it cost)\b',
+                r'\b(address|location|where|directions|how to get|where is it located)\b',
+                r'\b(seat|assignment|boarding pass|ticket|seat number|where is my seat)\b',
+                r'\b(confirmation|number|reference|id|booking reference|confirmation number)\b',
+                r'\b(recommend|suggest|advise|prefer|like|favorite)\b',
+                r'\b(compare|different|options|alternatives|choices)\b'
+            ],
+            
+            # Enhanced entity patterns
+            "entity": [
+                r'\b(hotel|restaurant|flight|train|taxi|bus|car|rental)\b',
+                r'\b(cambridge|london|new york|paris|berlin|rome|madrid)\b',
+                r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',
+                r'\b(january|february|march|april|may|june|july|august|september|october|november|december)\b',
+                r'\b(cheap|expensive|budget|luxury|moderate|affordable|reasonable)\b',
+                r'\b(wifi|parking|breakfast|dinner|lunch|gym|pool|spa)\b'
+            ]
+
+        }
+    
+    def extract_slots(self, text: str) -> Dict[str, List[str]]:
+        """
+        Extract slots from text using pattern matching.
+        
+        Args:
+            text: Input text to extract slots from
+            
+        Returns:
+            Dictionary mapping slot types to extracted values
+        """
+        extracted_slots = {}
+        text_lower = text.lower()
+        
+        for slot_type, patterns in self.slot_patterns.items():
+            values = []
+            for pattern in patterns:
+                matches = re.findall(pattern, text_lower, re.IGNORECASE)
+                values.extend(matches)
+            
+            if values:
+                extracted_slots[slot_type] = list(set(values))  # Remove duplicates
+        
+        return extracted_slots
+    
+    def enhance_context_with_slots(self, context: str, slots: Dict[str, List[str]]) -> str:
+        """
+        Enhance context with extracted slot information.
+        
+        Args:
+            context: Original context
+            slots: Extracted slots
+            
+        Returns:
+            Enhanced context with slot information
+        """
+        if not slots:
+            return context
+        
+        slot_info = []
+        for slot_type, values in slots.items():
+            slot_info.append(f"{slot_type.upper()}: {', '.join(values)}")
+        
+        enhanced_context = f"{context}\n\nEXTRACTED SLOTS: {' | '.join(slot_info)}"
+        return enhanced_context
 
 
 class MemoryRetriever:
@@ -332,6 +463,7 @@ class TACSFilter:
         self.memory_retriever = MemoryRetriever(memory_store)
         self.redundancy_filter = RedundancyFilter(llm)
         self.relevance_filter = ContextualRelevanceFilter(relevance_threshold)
+        self.slot_extractor = SlotExtractor()
     
     def execute(self, state: MemoryState) -> MemoryState:
         """
@@ -348,12 +480,22 @@ class TACSFilter:
         """
         print("🎯 TACS Filter: Screening context and filtering noise...")
         
-        # STEP 1: Retrieve relevant memory from store (THIS WAS MISSING!)
-        print("   Step 1: Retrieving relevant memory from store...")
+        # STEP 1: Extract slots from user input for enhanced context
+        print("   Step 1: Extracting slots from user input...")
+        user_input = state["user_input"]
+        extracted_slots = self.slot_extractor.extract_slots(user_input)
+        if extracted_slots:
+            print(f"   Extracted slots: {extracted_slots}")
+            # Enhance context with slot information
+            enhanced_context = self.slot_extractor.enhance_context_with_slots(user_input, extracted_slots)
+            state["user_input"] = enhanced_context
+        
+        # STEP 2: Retrieve relevant memory from store (THIS WAS MISSING!)
+        print("   Step 2: Retrieving relevant memory from store...")
         state = self.memory_retriever.execute(state)
         
-        # STEP 2: Check for redundancy
-        print("   Step 2: Checking for redundancy...")
+        # STEP 3: Check for redundancy
+        print("   Step 3: Checking for redundancy...")
         # Convert MemoryRecord objects to strings for redundancy check
         l1_strings = [record.payload if hasattr(record, 'payload') else str(record) for record in state.get("L1", [])]
         redundancy_state = {
@@ -362,8 +504,8 @@ class TACSFilter:
         }
         redundancy_state = self.redundancy_filter.execute(redundancy_state)
         
-        # STEP 3: Filter memory context by relevance
-        print("   Step 3: Filtering by relevance...")
+        # STEP 4: Filter memory context by relevance
+        print("   Step 4: Filtering by relevance...")
         context = {"user_input": state["user_input"]}
         
         # Convert MemoryRecord objects to strings for filtering

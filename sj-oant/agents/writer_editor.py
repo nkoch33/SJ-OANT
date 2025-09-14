@@ -371,6 +371,7 @@ class CombinedDeletionPolicy:
         # For now, placeholder logic
         
         # Check flagged items for permanent deletion
+        from core.types import MemoryTier
         flagged_records = [r for r in memory_store.records.values() if r.tier == MemoryTier.FLAGGED]
         for entry in flagged_records:
             if entry.scores.confidence < self.low_utility_threshold:
