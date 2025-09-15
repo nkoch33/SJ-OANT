@@ -22,7 +22,7 @@ from typing import Dict, List, Any
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from enhanced_tmm_pipeline import EnhancedTMMPipeline, EnhancedPipelineConfig
+from tmm_pipeline import TMMPipelineFixed, EnhancedPipelineConfig
 from testing.setup_api_key import setup_api_key
 
 class EnhancedOptimizationTester:
@@ -89,7 +89,7 @@ class EnhancedOptimizationTester:
                 enable_research_analytics=True
             )
             
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Test basic processing
             test_queries = [
@@ -136,7 +136,7 @@ class EnhancedOptimizationTester:
         """Test adaptive memory retrieval functionality."""
         try:
             config = EnhancedPipelineConfig(enable_adaptive_retrieval=True)
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Test different query types
             query_types = [
@@ -183,7 +183,7 @@ class EnhancedOptimizationTester:
         """Test enhanced multi-agent coordination."""
         try:
             config = EnhancedPipelineConfig(enable_enhanced_coordination=True)
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Test coordination with different complexity queries
             complexity_queries = [
@@ -230,7 +230,7 @@ class EnhancedOptimizationTester:
         """Test advanced truth verification."""
         try:
             config = EnhancedPipelineConfig(enable_advanced_verification=True)
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Test verification with different content types
             verification_queries = [
@@ -277,7 +277,7 @@ class EnhancedOptimizationTester:
         """Test research analytics functionality."""
         try:
             config = EnhancedPipelineConfig(enable_research_analytics=True)
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Generate some test data
             test_queries = [
@@ -328,7 +328,7 @@ class EnhancedOptimizationTester:
                 enable_advanced_verification=True,
                 enable_research_analytics=True
             )
-            enhanced_pipeline = EnhancedTMMPipeline(config=enhanced_config)
+            enhanced_pipeline = TMMPipelineFixed(enhanced_config=enhanced_config)
             
             # Test with enhanced features disabled (baseline)
             baseline_config = EnhancedPipelineConfig(
@@ -337,7 +337,7 @@ class EnhancedOptimizationTester:
                 enable_advanced_verification=False,
                 enable_research_analytics=False
             )
-            baseline_pipeline = EnhancedTMMPipeline(config=baseline_config)
+            baseline_pipeline = TMMPipelineFixed(enhanced_config=baseline_config)
             
             # Benchmark both configurations
             test_queries = [
@@ -412,7 +412,7 @@ class EnhancedOptimizationTester:
         """Test system health monitoring."""
         try:
             config = EnhancedPipelineConfig(enable_research_analytics=True)
-            pipeline = EnhancedTMMPipeline(config=config)
+            pipeline = TMMPipelineFixed(enhanced_config=config)
             
             # Generate some load
             for i in range(10):
