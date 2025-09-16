@@ -11,9 +11,12 @@ import random
 from typing import Dict, Any, List
 from datetime import datetime
 
-# Add paths
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'evaluation_frameworks'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Add paths (use absolute paths for reliability)
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR / 'evaluation_frameworks'))
+sys.path.append(str(ROOT_DIR))
 
 from unified_evaluator import UnifiedOfficialEvaluator
 from tmm_pipeline import TMMPipelineFixed as TMMPipeline
@@ -31,7 +34,7 @@ class OfficialBenchmarkEvaluator:
         
         # Use default API key if not provided
         if api_key is None:
-            api_key = "AIzaSyB9Sn7qyZ23FQg6kJ3gOJjayzxCXGuTe_4"
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or ""
         
         self.tmm_pipeline = TMMPipeline(api_key)
         logger.info("Initialized official benchmark evaluator")
@@ -47,151 +50,202 @@ class OfficialBenchmarkEvaluator:
         Returns:
             List of benchmark samples
         """
-        data_path = f"data/{benchmark}"
+        # Resolve dataset base directory absolutely
+        data_base = ROOT_DIR / 'data'
         
         if benchmark == "multiwoz":
-            return self._load_multiwoz_samples("../data/MULTIWOZ2.4", num_samples)
+            # Expects folder containing MULTIWOZ2.4/ with data.json and testListFile.json
+            return self._load_multiwoz_samples(str(data_base / "MULTIWOZ2.4"), num_samples)
         elif benchmark == "sgd":
-            return self._load_sgd_samples(f"../data/{benchmark}", num_samples)
+            return self._load_sgd_samples(str(data_base / "sgd"), num_samples)
         elif benchmark == "taskmaster":
-            return self._load_taskmaster_samples(f"../data/{benchmark}", num_samples)
+            return self._load_taskmaster_samples(str(data_base / "taskmaster"), num_samples)
         elif benchmark == "multidogo":
-            return self._load_multidogo_samples(f"../data/{benchmark}", num_samples)
+            return self._load_multidogo_samples(str(data_base / "multidogo"), num_samples)
         else:
             raise ValueError(f"Unknown benchmark: {benchmark}")
     
-    def _load_multiwoz_samples(self, data_path: str, num_samples: int) -> List[Dict]:
-        """Load MultiWOZ samples."""
+    def _load_multiwoz_samples(self, data_root: str, num_samples: int) -> List[Dict]:
+        """Load MultiWOZ samples robustly using official test list and valid IDs."""
         import json
+        from pathlib import Path
         
-        # Load MultiWOZ data
-        with open(f"{data_path}/MULTIWOZ2.4/data.json", 'r') as f:
+        mw_dir = Path(data_root) / "MULTIWOZ2.4"
+        data_file = mw_dir / "data.json"
+        test_list_file = mw_dir / "testListFile.json"
+        
+        if not data_file.exists():
+            raise FileNotFoundError(f"MultiWOZ data.json not found at {data_file}")
+        if not test_list_file.exists():
+            raise FileNotFoundError(f"MultiWOZ testListFile.json not found at {test_list_file}")
+        
+        with open(data_file, 'r') as f:
             data = json.load(f)
+        # Note: some distributions of MultiWOZ have testListFile.json as newline-delimited IDs, not JSON
+        try:
+            with open(test_list_file, 'r') as f:
+                test_ids = json.load(f)
+                if isinstance(test_ids, dict) and 'testListFile' in test_ids:
+                    test_ids = test_ids['testListFile']
+        except Exception:
+            # Fallback: read lines
+            with open(test_list_file, 'r') as f:
+                test_ids = [line.strip().replace('.json','') for line in f if line.strip()]
         
-        # Get random samples - filter out problematic dialogue IDs
-        dialogue_ids = [did for did in data.keys() if not did.startswith('MUL')]
-        selected_ids = random.sample(dialogue_ids, min(num_samples, len(dialogue_ids)))
+        # Normalize IDs in test list (ensure exact keys present in data)
+        valid_ids = [did if did in data else did.replace('.json','') for did in test_ids if (did in data) or (did.replace('.json','') in data)]
+        if not valid_ids:
+            # As a fallback, use any ids from data
+            valid_ids = list(data.keys())
         
-        samples = []
-        for dialogue_id in selected_ids:
-            try:
-                dialogue = data[dialogue_id]
-                user_turns = []
-                system_turns = []
-                
-                # MultiWOZ uses "log" field with alternating user/system turns
-                for i, turn in enumerate(dialogue["log"]):
-                    if i % 2 == 0:  # User turn
-                        user_turns.append(turn["text"])
-                    else:  # System turn
-                        system_turns.append(turn["text"])
-                
-                samples.append({
-                    "dialogue_id": dialogue_id,
-                    "user_turns": user_turns,
-                    "system_turns": system_turns
-                })
-            except Exception as e:
-                logger.warning(f"Skipping dialogue {dialogue_id}: {e}")
+        # Sample up to available
+        pick = random.sample(valid_ids, min(num_samples, len(valid_ids)))
+        
+        samples: List[Dict] = []
+        for dialogue_id in pick:
+            dialogue = data.get(dialogue_id)
+            if not dialogue or "log" not in dialogue:
+                logger.warning(f"Skipping invalid dialogue {dialogue_id}")
                 continue
-        
+            user_turns: List[str] = []
+            system_turns: List[str] = []
+            for i, turn in enumerate(dialogue["log"]):
+                text = turn.get("text", "").strip()
+                if text == "":
+                    continue
+                if i % 2 == 0:
+                    user_turns.append(text)
+                else:
+                    system_turns.append(text)
+            if not user_turns:
+                continue
+            samples.append({
+                "dialogue_id": dialogue_id,
+                "user_turns": user_turns,
+                "system_turns": system_turns
+            })
         return samples
     
     def _load_sgd_samples(self, data_path: str, num_samples: int) -> List[Dict]:
-        """Load SGD samples."""
+        """Load SGD samples robustly from any dialogues_*.json files."""
         import json
-        
-        # Load SGD data
-        with open(f"{data_path}/dialogues_001.json", 'r') as f:
-            data = json.load(f)
-        
-        # Get random samples
+        from pathlib import Path
+        p = Path(data_path)
+        files = sorted(p.glob("dialogues_*.json"))
+        if not files:
+            raise FileNotFoundError(f"No SGD dialogues_*.json files found in {data_path}")
+        # Load a subset from the first file to keep runtime manageable
+        data = []
+        for fp in files:
+            try:
+                with open(fp, 'r') as f:
+                    part = json.load(f)
+                    if isinstance(part, list):
+                        data.extend(part)
+            except Exception as e:
+                logger.warning(f"Failed to load {fp}: {e}")
+        if not data:
+            raise RuntimeError("Failed to load any SGD dialogues")
         selected_samples = random.sample(data, min(num_samples, len(data)))
-        
-        samples = []
+        samples: List[Dict] = []
         for sample in selected_samples:
-            user_turns = []
-            system_turns = []
-            
-            for turn in sample["turns"]:
-                if turn["speaker"] == "USER":
-                    user_turns.append(turn["utterance"])
+            turns = sample.get("turns", [])
+            user_turns: List[str] = []
+            system_turns: List[str] = []
+            for turn in turns:
+                speaker = turn.get("speaker")
+                utt = (turn.get("utterance") or "").strip()
+                if not utt:
+                    continue
+                if speaker == "USER":
+                    user_turns.append(utt)
                 else:
-                    system_turns.append(turn["utterance"])
-            
+                    system_turns.append(utt)
+            if not user_turns:
+                continue
             samples.append({
-                "dialogue_id": sample["dialogue_id"],
+                "dialogue_id": sample.get("dialogue_id", "unknown"),
                 "user_turns": user_turns,
                 "system_turns": system_turns
             })
-        
         return samples
     
     def _load_taskmaster_samples(self, data_path: str, num_samples: int) -> List[Dict]:
-        """Load Taskmaster samples."""
+        """Load Taskmaster samples robustly from available JSON."""
         import json
-        
-        # Load Taskmaster data
-        with open(f"{data_path}/restaurant-search.json", 'r') as f:
-            data = json.load(f)
-        
-        # Get random samples
+        from pathlib import Path
+        p = Path(data_path)
+        candidates = [p / 'restaurant-search.json'] + list(p.glob('*.json'))
+        data = []
+        for fp in candidates:
+            if not fp.exists():
+                continue
+            try:
+                with open(fp, 'r') as f:
+                    part = json.load(f)
+                    if isinstance(part, list):
+                        data.extend(part)
+            except Exception:
+                continue
+        if not data:
+            raise FileNotFoundError(f"No Taskmaster JSON data found in {data_path}")
         selected_samples = random.sample(data, min(num_samples, len(data)))
-        
-        samples = []
+        samples: List[Dict] = []
         for sample in selected_samples:
-            user_turns = []
-            system_turns = []
-            
-            for utterance in sample["utterances"]:
-                if utterance["speaker"] == "USER":
-                    user_turns.append(utterance["text"])
+            utterances = sample.get("utterances", [])
+            user_turns: List[str] = []
+            system_turns: List[str] = []
+            for utt in utterances:
+                text = (utt.get("text") or "").strip()
+                if not text:
+                    continue
+                if utt.get("speaker") == "USER":
+                    user_turns.append(text)
                 else:
-                    system_turns.append(utterance["text"])
-            
+                    system_turns.append(text)
+            if not user_turns:
+                continue
             samples.append({
-                "dialogue_id": sample["conversation_id"],
+                "dialogue_id": sample.get("conversation_id", "unknown"),
                 "user_turns": user_turns,
                 "system_turns": system_turns
             })
-        
         return samples
     
     def _load_multidogo_samples(self, data_path: str, num_samples: int) -> List[Dict]:
-        """Load MultiDoGO samples."""
+        """Load MultiDoGO samples robustly from TSVs, skipping invalid rows."""
         import pandas as pd
-        
-        # Load MultiDoGO data
-        tsv_files = ["airline.tsv", "fastfood.tsv", "airline_annotated.tsv"]
-        all_data = []
-        
-        for tsv_file in tsv_files:
-            tsv_path = f"{data_path}/{tsv_file}"
-            if os.path.exists(tsv_path):
-                try:
-                    df = pd.read_csv(tsv_path, sep='\t', quoting=3, on_bad_lines='skip', engine='python')
-                    all_data.append(df)
-                except Exception as e:
-                    logger.warning(f"Failed to load {tsv_file}: {e}")
-        
-        if not all_data:
-            return []
-        
-        # Combine all data
-        combined_df = pd.concat(all_data, ignore_index=True)
-        
-        # Get random samples
-        selected_indices = random.sample(range(len(combined_df)), min(num_samples, len(combined_df)))
-        selected_data = combined_df.iloc[selected_indices]
-        
-        samples = []
-        for _, row in selected_data.iterrows():
+        from pathlib import Path
+        p = Path(data_path)
+        tsv_files = [p / "airline.tsv", p / "fastfood.tsv", p / "airline_annotated.tsv"]
+        frames = []
+        for fp in tsv_files:
+            if not fp.exists():
+                continue
+            try:
+                df = pd.read_csv(fp, sep='\t', quoting=3, on_bad_lines='skip', engine='python')
+                frames.append(df)
+            except Exception as e:
+                logger.warning(f"Failed to load {fp}: {e}")
+        if not frames:
+            raise FileNotFoundError(f"No MultiDoGO TSVs found in {data_path}")
+        df = pd.concat(frames, ignore_index=True)
+        # Clean
+        df = df.dropna(subset=[col for col in ["conversationId", "utterance"] if col in df.columns])
+        if df.empty:
+            raise RuntimeError("MultiDoGO data is empty after cleaning")
+        count = min(num_samples, len(df))
+        selected = df.sample(n=count, random_state=42)
+        samples: List[Dict] = []
+        for _, row in selected.iterrows():
+            utt = str(row.get("utterance", "")).strip()
+            if not utt:
+                continue
             samples.append({
-                "dialogue_id": str(row.get("conversationId", "")),
-                "user_turns": [str(row.get("utterance", ""))],
+                "dialogue_id": str(row.get("conversationId", "unknown")),
+                "user_turns": [utt],
                 "system_turns": []
             })
-        
         return samples
     
     def generate_tmm_predictions(self, samples: List[Dict]) -> List[Dict]:
@@ -218,7 +272,7 @@ class OfficialBenchmarkEvaluator:
                 # Process each user turn
                 for user_turn in user_turns:
                     response = self.tmm_pipeline.process(user_turn)
-                    responses.append(response)
+                    responses.append(self._normalize_text(response))
                 
                 predictions.append({
                     "dialogue_id": dialogue_id,
@@ -231,6 +285,14 @@ class OfficialBenchmarkEvaluator:
                 continue
         
         return predictions
+
+    def _normalize_text(self, text: str) -> str:
+        """Light normalization to stabilize text-based metrics without altering semantics."""
+        if not isinstance(text, str):
+            text = str(text)
+        # Trim, collapse whitespace
+        s = ' '.join(text.strip().split())
+        return s
     
     def evaluate_benchmark(self, benchmark: str, num_samples: int = 25) -> Dict[str, Any]:
         """
@@ -245,7 +307,7 @@ class OfficialBenchmarkEvaluator:
         """
         logger.info(f"Evaluating {benchmark} with {num_samples} samples")
         
-        # Load data
+        # Load data using requested sample size (MultiWOZ loader already validates IDs)
         samples = self.load_benchmark_data(benchmark, num_samples)
         logger.info(f"Loaded {len(samples)} samples for {benchmark}")
         

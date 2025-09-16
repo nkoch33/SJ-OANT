@@ -134,7 +134,13 @@ class SlotExtractor:
             values = []
             for pattern in patterns:
                 matches = re.findall(pattern, text_lower, re.IGNORECASE)
-                values.extend(matches)
+                # Normalize matches: if a pattern has multiple capture groups,
+                # re.findall returns tuples; join them into a single string.
+                for m in matches:
+                    if isinstance(m, tuple):
+                        values.append(' '.join([str(x) for x in m if str(x).strip()]))
+                    else:
+                        values.append(str(m))
             
             if values:
                 extracted_slots[slot_type] = list(set(values))  # Remove duplicates
