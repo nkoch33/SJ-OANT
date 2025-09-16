@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from evaluation_frameworks.unified_evaluator import UnifiedOfficialEvaluator
 from tmm_pipeline import TMMPipelineFixed
-from testing.setup_api_key import setup_api_key
+from typing import Dict, Any, List
 
 class FullScaleEvaluator:
     """Full-scale evaluation orchestrator for all benchmarks."""
@@ -282,8 +282,9 @@ def main():
     print("🚀 SJ-OANT Full-Scale Evaluation")
     print("=" * 50)
     
-    # Setup API key
-    setup_api_key()
+    # Ensure API key present
+    if not os.getenv('GEMINI_API_KEY'):
+        raise RuntimeError('GEMINI_API_KEY not set. Please export it before running.')
     
     # Initialize evaluator with custom sample sizes
     sample_sizes = {

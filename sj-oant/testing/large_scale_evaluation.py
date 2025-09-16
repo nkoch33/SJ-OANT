@@ -25,9 +25,10 @@ class LargeScaleEvaluator:
     
     def __init__(self):
         """Initialize the evaluator."""
-        self.api_key = os.getenv('GOOGLE_API_KEY')
+        # Use GEMINI_API_KEY for Google Gemini
+        self.api_key = os.getenv('GEMINI_API_KEY')
         if not self.api_key:
-            logger.error("GOOGLE_API_KEY environment variable not set")
+            logger.error("GEMINI_API_KEY environment variable not set")
             sys.exit(1)
         
         self.memory_store = InMemoryStore()
@@ -475,8 +476,8 @@ def main():
     """Main function to run large-scale evaluation."""
     evaluator = LargeScaleEvaluator()
     
-    # Run all evaluations
-    results = evaluator.run_all_evaluations(num_conversations=25)
+    # Run all evaluations (scaled up)
+    results = evaluator.run_all_evaluations(num_conversations=150)
     
     # Print summary
     evaluator.print_results_summary(results)
