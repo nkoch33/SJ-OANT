@@ -10,16 +10,11 @@ import os
 from typing import Dict, Any, List
 from datetime import datetime
 
-# Add framework paths
-sys.path.append(os.path.join(os.path.dirname(__file__), 'multiwoz'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'sgd'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'taskmaster'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'multidogo'))
-
-from multiwoz.official_evaluator import OfficialMultiWOZEvaluator
-from sgd.official_evaluator import OfficialSGDEvaluator
-from taskmaster.official_evaluator import OfficialTaskmasterEvaluator
-from multidogo.official_evaluator import OfficialMultiDoGOEvaluator
+# Use package imports so evaluation frameworks resolve consistently
+from evaluation_frameworks.multiwoz.official_evaluator import OfficialMultiWOZEvaluator
+from evaluation_frameworks.sgd.official_evaluator import OfficialSGDEvaluator
+from evaluation_frameworks.taskmaster.official_evaluator import OfficialTaskmasterEvaluator
+from evaluation_frameworks.multidogo.official_evaluator import OfficialMultiDoGOEvaluator
 
 logger = logging.getLogger(__name__)
 
