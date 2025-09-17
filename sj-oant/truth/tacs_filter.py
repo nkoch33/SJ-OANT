@@ -113,6 +113,28 @@ class SlotExtractor:
                 r'\b(january|february|march|april|may|june|july|august|september|october|november|december)\b',
                 r'\b(cheap|expensive|budget|luxury|moderate|affordable|reasonable)\b',
                 r'\b(wifi|parking|breakfast|dinner|lunch|gym|pool|spa)\b'
+            ],
+            
+            # Taskmaster-specific patterns for better slot extraction
+            "taskmaster_service": [
+                r'\b(restaurant|dinner|lunch|breakfast|food|meal|dining)\b',
+                r'\b(movie|film|cinema|theater|show|entertainment)\b',
+                r'\b(ride|uber|lyft|taxi|cab|transportation)\b',
+                r'\b(coffee|drink|beverage|starbucks|cafe)\b',
+                r'\b(booking|reservation|appointment|schedule)\b'
+            ],
+            "taskmaster_preference": [
+                r'\b(prefer|like|want|need|looking for|interested in)\b',
+                r'\b(cheap|expensive|budget|affordable|reasonable|moderate)\b',
+                r'\b(close|near|far|downtown|uptown|center|central)\b',
+                r'\b(quiet|loud|busy|crowded|popular|famous)\b',
+                r'\b(quick|fast|slow|long|short|brief)\b'
+            ],
+            "taskmaster_confirmation": [
+                r'\b(yes|no|okay|ok|sure|certainly|absolutely|definitely)\b',
+                r'\b(that sounds good|perfect|great|excellent|wonderful)\b',
+                r'\b(no thanks|no thank you|not interested|pass)\b',
+                r'\b(maybe|perhaps|possibly|not sure|unsure)\b'
             ]
 
         }
@@ -196,7 +218,7 @@ class MemoryRetriever:
             user_input: User's current input to match against stored memory
             
         Returns:
-            List of relevant MemoryRecord objects
+            List of relevant MemoryRecord objects (excluding FLAGGED false memories)
         """
         print("🔍 Memory Retriever: Searching for relevant memory...")
         
@@ -207,16 +229,21 @@ class MemoryRetriever:
                 limit=self.retrieval_limit
             )
             
+            # CRITICAL: Filter out FLAGGED false memories
+            filtered_records = [record for record in relevant_records 
+                              if record.tier != MemoryTier.FLAGGED]
+            
             print(f"   Retrieved {len(relevant_records)} relevant memory records")
+            print(f"   Filtered out {len(relevant_records) - len(filtered_records)} FLAGGED false memories")
             
             # Log what we found
-            for i, record in enumerate(relevant_records[:3]):  # Show first 3
+            for i, record in enumerate(filtered_records[:3]):  # Show first 3
                 print(f"   {i+1}. [{record.tier.value}] {record.payload[:50]}...")
             
-            if len(relevant_records) > 3:
-                print(f"   ... and {len(relevant_records) - 3} more")
+            if len(filtered_records) > 3:
+                print(f"   ... and {len(filtered_records) - 3} more")
             
-            return relevant_records
+            return filtered_records
             
         except Exception as e:
             print(f"   Error retrieving memory: {e}")
@@ -446,6 +473,115 @@ class ContextualRelevanceFilter:
         return relevant_content
 
 
+class FalseMemoryDetector:
+    """
+    Enhanced false memory detection component for TACS filter.
+    
+    This component identifies potential false information and contradictions
+    to prevent false memory formation in the TMM system.
+    """
+    
+    def __init__(self):
+        """Initialize the false memory detector."""
+        self.false_facts = {
+            "Cambridge is in Scotland",
+            "The train leaves at 2:15 PM", 
+            "The hotel costs $200 per night",
+            "The restaurant closes at 8 PM",
+            "We charge $5 for WiFi",
+            "The restaurant seats 20 people",
+            "The hotel has 2 stars",
+            "The airport is 5 miles away",
+            "The flight takes 6 hours",
+            "It's raining today"
+        }
+        
+        self.contradiction_patterns = [
+            (r'\b(\d+)\s+(?:hours?|hrs?)\b', r'\b(\d+)\s+(?:hours?|hrs?)\b'),
+            (r'\b(\$\d+)\b', r'\b(\$\d+)\b'),
+            (r'\bin\s+(\w+)\b', r'\bin\s+(\w+)\b'),
+            (r'\bat\s+(\d+:\d+)\b', r'\bat\s+(\d+:\d+)\b')
+        ]
+    
+    def detect_false_information(self, content: str) -> Dict[str, Any]:
+        """
+        Detect potential false information in content.
+        
+        Args:
+            content: Content to analyze
+            
+        Returns:
+            Detection results with confidence scores
+        """
+        content_lower = content.lower()
+        false_detections = []
+        
+        # Check for known false facts
+        for false_fact in self.false_facts:
+            if false_fact.lower() in content_lower:
+                false_detections.append({
+                    "type": "known_false_fact",
+                    "fact": false_fact,
+                    "confidence": 0.9,
+                    "reason": "Matches known false information"
+                })
+        
+        # Check for suspicious patterns
+        suspicious_patterns = [
+            (r'\b(?:actually|really|truthfully)\s+(?:the|it|this)\b', "Uncertainty indicators"),
+            (r'\b(?:might|could|possibly|perhaps)\s+(?:be|have|do)\b', "Hedging language"),
+            (r'\b(?:i\s+think|i\s+believe|i\s+guess)\b', "Personal opinion markers")
+        ]
+        
+        for pattern, reason in suspicious_patterns:
+            if re.search(pattern, content_lower):
+                false_detections.append({
+                    "type": "suspicious_pattern",
+                    "pattern": pattern,
+                    "confidence": 0.6,
+                    "reason": reason
+                })
+        
+        return {
+            "is_false": len(false_detections) > 0,
+            "detections": false_detections,
+            "confidence": max([d["confidence"] for d in false_detections]) if false_detections else 0.0
+        }
+    
+    def detect_contradictions(self, content: str, existing_memories: List[str]) -> Dict[str, Any]:
+        """
+        Detect contradictions between content and existing memories.
+        
+        Args:
+            content: New content to check
+            existing_memories: List of existing memory content
+            
+        Returns:
+            Contradiction detection results
+        """
+        contradictions = []
+        
+        for memory in existing_memories:
+            for pattern in self.contradiction_patterns:
+                content_matches = re.findall(pattern, content.lower())
+                memory_matches = re.findall(pattern, memory.lower())
+                
+                if content_matches and memory_matches and content_matches != memory_matches:
+                    contradictions.append({
+                        "type": "factual_contradiction",
+                        "content_matches": content_matches,
+                        "memory_matches": memory_matches,
+                        "confidence": 0.8,
+                        "reason": "Conflicting factual information"
+                    })
+        
+        return {
+            "has_contradictions": len(contradictions) > 0,
+            "contradictions": contradictions,
+            "confidence": max([c["confidence"] for c in contradictions]) if contradictions else 0.0
+        }
+
+
 class TACSFilter:
     """
     Token-level Adaptive Context Screening Filter.
@@ -470,6 +606,7 @@ class TACSFilter:
         self.redundancy_filter = RedundancyFilter(llm)
         self.relevance_filter = ContextualRelevanceFilter(relevance_threshold)
         self.slot_extractor = SlotExtractor()
+        self.false_memory_detector = FalseMemoryDetector()
     
     def execute(self, state: MemoryState) -> MemoryState:
         """

@@ -60,50 +60,57 @@ class OfficialBenchmarkEvaluator:
             return self._load_sgd_samples(str(data_base / "sgd"), num_samples)
         elif benchmark == "taskmaster":
             return self._load_taskmaster_samples(str(data_base / "taskmaster"), num_samples)
-        elif benchmark == "multidogo":
-            return self._load_multidogo_samples(str(data_base / "multidogo"), num_samples)
         else:
             raise ValueError(f"Unknown benchmark: {benchmark}")
     
     def _load_multiwoz_samples(self, data_root: str, num_samples: int) -> List[Dict]:
-        """Load MultiWOZ samples robustly using official test list and valid IDs."""
+        """Load MultiWOZ samples using IDs that exist in both data and references."""
         import json
         from pathlib import Path
         
         mw_dir = Path(data_root) / "MULTIWOZ2.4"
         data_file = mw_dir / "data.json"
-        test_list_file = mw_dir / "testListFile.json"
+        
+        # Load reference IDs from the official evaluator
+        ref_path = Path(__file__).resolve().parent.parent / "evaluation_frameworks" / "multiwoz" / "mwzeval" / "data" / "references" / "mwz22.json"
         
         if not data_file.exists():
             raise FileNotFoundError(f"MultiWOZ data.json not found at {data_file}")
-        if not test_list_file.exists():
-            raise FileNotFoundError(f"MultiWOZ testListFile.json not found at {test_list_file}")
+        if not ref_path.exists():
+            raise FileNotFoundError(f"MultiWOZ reference file not found at {ref_path}")
         
         with open(data_file, 'r') as f:
             data = json.load(f)
-        # Note: some distributions of MultiWOZ have testListFile.json as newline-delimited IDs, not JSON
-        try:
-            with open(test_list_file, 'r') as f:
-                test_ids = json.load(f)
-                if isinstance(test_ids, dict) and 'testListFile' in test_ids:
-                    test_ids = test_ids['testListFile']
-        except Exception:
-            # Fallback: read lines
-            with open(test_list_file, 'r') as f:
-                test_ids = [line.strip().replace('.json','') for line in f if line.strip()]
         
-        # Normalize IDs in test list (ensure exact keys present in data)
-        valid_ids = [did if did in data else did.replace('.json','') for did in test_ids if (did in data) or (did.replace('.json','') in data)]
+        with open(ref_path, 'r') as f:
+            references = json.load(f)
+        
+        # Use only IDs that exist in both data and references
+        # Data IDs have .json extension and uppercase prefixes, references have lowercase
+        data_ids = {did.replace('.json', '').lower() for did in data.keys()}
+        ref_ids = {rid.lower() for rid in references.keys()}
+        valid_ids = list(data_ids.intersection(ref_ids))
+        
         if not valid_ids:
-            # As a fallback, use any ids from data
-            valid_ids = list(data.keys())
+            raise RuntimeError("No overlapping dialogue IDs between data and references")
         
         # Sample up to available
         pick = random.sample(valid_ids, min(num_samples, len(valid_ids)))
         
         samples: List[Dict] = []
         for dialogue_id in pick:
-            dialogue = data.get(dialogue_id)
+            # Find the original data key (with .json extension and original case)
+            original_key = None
+            for data_key in data.keys():
+                if data_key.replace('.json', '').lower() == dialogue_id:
+                    original_key = data_key
+                    break
+            
+            if not original_key:
+                logger.warning(f"Could not find original key for {dialogue_id}")
+                continue
+                
+            dialogue = data.get(original_key)
             if not dialogue or "log" not in dialogue:
                 logger.warning(f"Skipping invalid dialogue {dialogue_id}")
                 continue
@@ -120,7 +127,7 @@ class OfficialBenchmarkEvaluator:
             if not user_turns:
                 continue
             samples.append({
-                "dialogue_id": dialogue_id,
+                "dialogue_id": dialogue_id,  # Use lowercase ID for evaluator compatibility
                 "user_turns": user_turns,
                 "system_turns": system_turns
             })
@@ -212,55 +219,24 @@ class OfficialBenchmarkEvaluator:
             })
         return samples
     
-    def _load_multidogo_samples(self, data_path: str, num_samples: int) -> List[Dict]:
-        """Load MultiDoGO samples robustly from TSVs, skipping invalid rows."""
-        import pandas as pd
-        from pathlib import Path
-        p = Path(data_path)
-        tsv_files = [p / "airline.tsv", p / "fastfood.tsv", p / "airline_annotated.tsv"]
-        frames = []
-        for fp in tsv_files:
-            if not fp.exists():
-                continue
-            try:
-                df = pd.read_csv(fp, sep='\t', quoting=3, on_bad_lines='skip', engine='python')
-                frames.append(df)
-            except Exception as e:
-                logger.warning(f"Failed to load {fp}: {e}")
-        if not frames:
-            raise FileNotFoundError(f"No MultiDoGO TSVs found in {data_path}")
-        df = pd.concat(frames, ignore_index=True)
-        # Clean
-        df = df.dropna(subset=[col for col in ["conversationId", "utterance"] if col in df.columns])
-        if df.empty:
-            raise RuntimeError("MultiDoGO data is empty after cleaning")
-        count = min(num_samples, len(df))
-        selected = df.sample(n=count, random_state=42)
-        samples: List[Dict] = []
-        for _, row in selected.iterrows():
-            utt = str(row.get("utterance", "")).strip()
-            if not utt:
-                continue
-            samples.append({
-                "dialogue_id": str(row.get("conversationId", "unknown")),
-                "user_turns": [utt],
-                "system_turns": []
-            })
-        return samples
     
-    def generate_tmm_predictions(self, samples: List[Dict]) -> List[Dict]:
+    def generate_tmm_predictions(self, samples: List[Dict], benchmark: str) -> List[Dict]:
         """
-        Generate TMM predictions for samples.
+        Generate TMM predictions for samples with progress tracking.
         
         Args:
             samples: List of benchmark samples
+            benchmark: Benchmark name for progress display
             
         Returns:
             List of TMM predictions
         """
         predictions = []
+        total_samples = len(samples)
         
-        for sample in samples:
+        print(f"\n🔄 Processing {benchmark.upper()} conversations...")
+        
+        for i, sample in enumerate(samples, 1):
             try:
                 # Reset memory for each dialogue
                 self.tmm_pipeline.reset_memory()
@@ -269,21 +245,29 @@ class OfficialBenchmarkEvaluator:
                 user_turns = sample["user_turns"]
                 responses = []
                 
+                print(f"   📝 Conversation {i}/{total_samples} (ID: {dialogue_id})")
+                
                 # Process each user turn
-                for user_turn in user_turns:
+                for turn_idx, user_turn in enumerate(user_turns, 1):
+                    print(f"      Turn {turn_idx}/{len(user_turns)}: {user_turn[:50]}...")
                     response = self.tmm_pipeline.process(user_turn)
                     responses.append(self._normalize_text(response))
+                    print(f"      ✅ Response generated")
+                
+                print(f"   ✅ Conversation {i}/{total_samples} completed")
                 
                 predictions.append({
                     "dialogue_id": dialogue_id,
                     "user_turns": user_turns,
-                    "responses": responses
+                    "responses": responses,
+                    "system_turns": sample.get("system_turns", [])  # Include reference system turns
                 })
                 
             except Exception as e:
                 logger.error(f"Failed to process dialogue {dialogue_id}: {e}")
                 continue
         
+        print(f"✅ {benchmark.upper()} evaluation finished, moving onto next benchmark...\n")
         return predictions
 
     def _normalize_text(self, text: str) -> str:
@@ -305,24 +289,25 @@ class OfficialBenchmarkEvaluator:
         Returns:
             Evaluation results
         """
-        logger.info(f"Evaluating {benchmark} with {num_samples} samples")
+        print(f"\n🚀 Starting {benchmark.upper()} evaluation ({num_samples} samples)")
         
         # Load data using requested sample size (MultiWOZ loader already validates IDs)
         samples = self.load_benchmark_data(benchmark, num_samples)
-        logger.info(f"Loaded {len(samples)} samples for {benchmark}")
+        print(f"📊 Loaded {len(samples)} samples for {benchmark}")
         
-        # Generate predictions
-        predictions = self.generate_tmm_predictions(samples)
-        logger.info(f"Generated {len(predictions)} predictions for {benchmark}")
+        # Generate predictions with progress tracking
+        predictions = self.generate_tmm_predictions(samples, benchmark)
+        print(f"🎯 Generated {len(predictions)} predictions for {benchmark}")
         
         # Evaluate using official framework
+        print(f"📈 Computing {benchmark.upper()} metrics...")
         results = self.unified_evaluator.evaluate_benchmark(benchmark, predictions)
         
         return results
     
     def evaluate_all_benchmarks(self, num_samples: int = 25) -> Dict[str, Any]:
         """
-        Evaluate TMM on all benchmarks.
+        Evaluate TMM on all benchmarks with streamlined progress tracking.
         
         Args:
             num_samples: Number of samples per benchmark
@@ -330,24 +315,33 @@ class OfficialBenchmarkEvaluator:
         Returns:
             Complete evaluation results
         """
-        logger.info(f"Starting comprehensive evaluation with {num_samples} samples per benchmark")
+        print("="*80)
+        print("🏆 TMM OFFICIAL BENCHMARK EVALUATION".center(80))
+        print("="*80)
+        print(f"📊 Samples per benchmark: {num_samples}")
+        print(f"🎯 Benchmarks: MultiWOZ, SGD, Taskmaster")
+        print("="*80)
         
         all_predictions = {}
         all_results = {}
         
-        benchmarks = ["multiwoz", "sgd", "taskmaster", "multidogo"]
+        benchmarks = ["multiwoz", "sgd", "taskmaster"]
         
-        for benchmark in benchmarks:
-            logger.info(f"Processing {benchmark}...")
+        for i, benchmark in enumerate(benchmarks, 1):
+            print(f"\n📍 Benchmark {i}/3: {benchmark.upper()}")
             
             # Load data and generate predictions
             samples = self.load_benchmark_data(benchmark, num_samples)
-            predictions = self.generate_tmm_predictions(samples)
+            predictions = self.generate_tmm_predictions(samples, benchmark)
             all_predictions[benchmark] = predictions
             
             # Evaluate using official framework
             results = self.unified_evaluator.evaluate_benchmark(benchmark, predictions)
             all_results[benchmark] = results
+        
+        print("="*80)
+        print("🎉 ALL BENCHMARKS COMPLETED!".center(80))
+        print("="*80)
         
         # Create comprehensive results
         comprehensive_results = {
@@ -390,6 +384,19 @@ class OfficialBenchmarkEvaluator:
         # Generate and print summary
         summary = self.unified_evaluator.get_comprehensive_summary(results)
         self.unified_evaluator.print_summary(summary)
+
+        # Also print raw metrics per benchmark for completeness
+        print("\n" + "-"*80)
+        print("RAW METRICS BY BENCHMARK")
+        print("-"*80)
+        for bench, res in results.get("results", {}).items():
+            if isinstance(res, dict) and "error" not in res:
+                print(f"[{bench.upper()}]")
+                try:
+                    print(json.dumps(res, indent=2)[:4000])
+                except Exception:
+                    print(str(res)[:2000])
+                print()
         
         logger.info("Official evaluation completed")
         return results

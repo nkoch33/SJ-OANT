@@ -93,8 +93,6 @@ class MultiAgentTMMPipeline:
         Strategic Planner → TACS Filter → Truth Verifier → Memory Curator → Responder
         """
         try:
-            logger.info(f"Processing input through multi-agent chain: {user_input[:100]}...")
-            
             # Initialize state
             state = AgentChainState(
                 original_input=user_input,
@@ -115,7 +113,6 @@ class MultiAgentTMMPipeline:
             )
             
             # Agent 1: Strategic Planner
-            logger.info("🧠 Strategic Planner: Analyzing query and planning execution...")
             memory_state = self.memory_store.get_state()
             execution_plan = self.strategic_planner.plan(state.original_input, memory_state)
             state.planning_result = {
@@ -125,7 +122,6 @@ class MultiAgentTMMPipeline:
             state.processed_input = state.original_input
             
             # Agent 2: TACS Filter (Context Filtering)
-            logger.info("🎯 TACS Filter: Screening context and filtering noise...")
             memory_state = self.memory_store.get_state()
             memory_state["user_input"] = state.processed_input
             filtered_state = self.tacs_filter.execute(memory_state)
@@ -135,7 +131,6 @@ class MultiAgentTMMPipeline:
             ]
             
             # Agent 3: Truth Verifier
-            logger.info("✅ Truth Verifier: Verifying information truthfulness...")
             # Convert filtered context list to dict format expected by verifier
             verification_context = {
                 "filtered_context": state.filtered_context,
@@ -155,10 +150,8 @@ class MultiAgentTMMPipeline:
             # Check for contradictions
             if state.verification_scores.truth_score < 0.5:
                 self.contradiction_detections += 1
-                logger.info(f"🚨 Contradiction detected! Truth score: {state.verification_scores.truth_score:.2f}")
             
             # Agent 4: Memory Curator (Writer/Editor)
-            logger.info("📝 Memory Curator: Managing memory operations...")
             verification_result = {
                 "confidence": state.verification_scores.confidence,
                 "truth_score": state.verification_scores.truth_score,
@@ -170,7 +163,6 @@ class MultiAgentTMMPipeline:
             state.memory_operations = {"memory_updated": True, "verification_result": verification_result}
             
             # Agent 5: Responder
-            logger.info("💬 Responder: Generating final response...")
             context = {
                 "filtered_context": state.filtered_context,
                 "memory_state": updated_memory_state,  # Use the updated memory state from curator
@@ -185,7 +177,6 @@ class MultiAgentTMMPipeline:
             state.metadata["end_time"] = time.time()
             state.metadata["total_time"] = state.metadata["end_time"] - state.metadata["start_time"]
             
-            logger.info(f"Multi-agent processing completed in {state.metadata['total_time']:.3f}s")
             return state.final_response
             
         except Exception as e:
@@ -209,6 +200,10 @@ class MultiAgentTMMPipeline:
     def get_contradiction_detections(self) -> int:
         """Get the number of contradictions detected."""
         return self.contradiction_detections
+    
+    def reset_memory(self):
+        """Reset memory store for new dialogue."""
+        self.memory_store = InMemoryStore()
 
 def create_multi_agent_pipeline(api_key: str, config: Dict[str, Any] = None) -> MultiAgentTMMPipeline:
     """

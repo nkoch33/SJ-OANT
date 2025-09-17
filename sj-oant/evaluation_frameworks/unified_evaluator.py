@@ -14,7 +14,6 @@ from datetime import datetime
 from evaluation_frameworks.multiwoz.official_evaluator import OfficialMultiWOZEvaluator
 from evaluation_frameworks.sgd.official_evaluator import OfficialSGDEvaluator
 from evaluation_frameworks.taskmaster.official_evaluator import OfficialTaskmasterEvaluator
-from evaluation_frameworks.multidogo.official_evaluator import OfficialMultiDoGOEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +30,7 @@ class UnifiedOfficialEvaluator:
         self.evaluators = {
             "multiwoz": OfficialMultiWOZEvaluator(bleu=True, success=True, richness=True),
             "sgd": OfficialSGDEvaluator(),
-            "taskmaster": OfficialTaskmasterEvaluator(),
-            "multidogo": OfficialMultiDoGOEvaluator()
+            "taskmaster": OfficialTaskmasterEvaluator()
         }
         logger.info("Initialized unified official evaluator with research integrity")
     
@@ -41,7 +39,7 @@ class UnifiedOfficialEvaluator:
         Evaluate TMM predictions on a specific benchmark using official framework.
         
         Args:
-            benchmark: Benchmark name (multiwoz, sgd, taskmaster, multidogo)
+            benchmark: Benchmark name (multiwoz, sgd, taskmaster)
             tmm_predictions: List of TMM predictions
             
         Returns:

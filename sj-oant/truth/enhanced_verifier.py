@@ -515,17 +515,32 @@ class EnhancedTruthVerifier:
     
     def _is_direct_contradiction(self, content1: str, content2: str) -> bool:
         """Check if two pieces of content directly contradict each other."""
-        # Simple contradiction detection based on negation patterns
+        # Enhanced contradiction detection
         negation_patterns = [
             (r'\b(?:is|are|was|were)\s+(?:not|n\'t)\b', r'\b(?:is|are|was|were)\b'),
             (r'\b(?:does|do|did)\s+(?:not|n\'t)\b', r'\b(?:does|do|did)\b'),
             (r'\b(?:has|have|had)\s+(?:not|n\'t)\b', r'\b(?:has|have|had)\b')
         ]
         
+        # Check negation patterns
         for neg_pattern, pos_pattern in negation_patterns:
             if re.search(neg_pattern, content1.lower()) and re.search(pos_pattern, content2.lower()):
                 return True
             if re.search(neg_pattern, content2.lower()) and re.search(pos_pattern, content1.lower()):
+                return True
+        
+        # Check for factual contradictions (enhanced)
+        factual_contradictions = [
+            (r'\b(\d+)\s+(?:hours?|hrs?)\b', r'\b(\d+)\s+(?:hours?|hrs?)\b'),  # Different durations
+            (r'\b(\$\d+)\b', r'\b(\$\d+)\b'),  # Different prices
+            (r'\bin\s+(\w+)\b', r'\bin\s+(\w+)\b'),  # Different locations
+            (r'\bat\s+(\d+:\d+)\b', r'\bat\s+(\d+:\d+)\b')  # Different times
+        ]
+        
+        for pattern in factual_contradictions:
+            matches1 = re.findall(pattern, content1.lower())
+            matches2 = re.findall(pattern, content2.lower())
+            if matches1 and matches2 and matches1 != matches2:
                 return True
         
         return False
