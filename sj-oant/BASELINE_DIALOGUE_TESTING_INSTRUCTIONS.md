@@ -1,10 +1,10 @@
 # Baseline Dialogue Testing Instructions
 
-## 🎯 Overview
+##  Overview
 
 This document provides complete instructions for setting up baseline testing of open source LLMs against our TMM model on dialogue performance metrics. The goal is to compare how different models perform on standard dialogue tasks across 3 benchmarks.
 
-## 📁 Current Codebase State
+##  Current Codebase State
 
 ### File Structure
 ```
@@ -55,7 +55,7 @@ sj-oant/
   - **Semantic Similarity**: Semantic alignment with references
   - **Slot Extraction F1**: Accuracy of extracting task-specific information
 
-## 🚀 How to Test Our TMM Model
+##  How to Test Our TMM Model
 
 ### Quick Test (5 conversations each)
 ```bash
@@ -71,7 +71,7 @@ python testing/official_evaluation.py
 python testing/official_evaluation.py
 ```
 
-## 🏗️ Setting Up Baseline Testing Environment
+##  Setting Up Baseline Testing Environment
 
 ### Step 1: Create Baseline Testing Folder
 ```bash
@@ -133,7 +133,7 @@ The baseline testing should produce:
 - **Statistical Analysis**: Significance testing between models
 - **Visualization**: Charts showing performance differences
 
-## 📊 Expected Results Format
+##  Expected Results Format
 
 ```json
 {
@@ -166,7 +166,7 @@ The baseline testing should produce:
 }
 ```
 
-## ⚠️ Important Notes
+##  Important Notes
 
 1. **Don't Modify Main Model**: These baselines should NOT affect our TMM model performance
 2. **Use Same Data**: Ensure all models are tested on identical conversation sets
@@ -174,7 +174,7 @@ The baseline testing should produce:
 4. **Reproducible**: Set random seeds for consistent results
 5. **Documentation**: Document all baseline model configurations and versions
 
-## 🎯 Success Criteria
+##  Success Criteria
 
 The baseline testing is successful when:
 - [ ] All 3 baseline LLMs are tested on 100 conversations per benchmark
