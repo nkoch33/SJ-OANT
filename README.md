@@ -2,11 +2,11 @@
 
 A sophisticated multi-agent dialogue system implementing Truth-Maintained Memory (TMM) with comprehensive evaluation across multiple benchmarks.
 
-## 🎯 Overview
+##  Overview
 
 SJ-OANT is a research-grade multi-agent system that implements a novel Truth-Maintained Memory architecture for dialogue systems. The system consists of multiple specialized agents working together to provide accurate, context-aware, and truthful responses across various domains.
 
-## 🏗️ Architecture
+##  Architecture
 
 ### Core Components
 
@@ -23,7 +23,7 @@ SJ-OANT is a research-grade multi-agent system that implements a novel Truth-Mai
 - **L3 (Archival Memory)**: Long-term, reference information
 - **Flagged Memory**: Information requiring special attention
 
-## 📊 Benchmarks & Evaluation
+##  Benchmarks & Evaluation
 
 The system is evaluated on four major dialogue benchmarks:
 
@@ -47,7 +47,7 @@ The system is evaluated on four major dialogue benchmarks:
 - **Performance**: 70% Slot F1, 100% Domain Adaptation, 48.47% Response Quality
 - **Framework**: EvalScope evaluation framework
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ pip install -r sj-oant/requirements.txt
    python test_multiwoz_evaluation.py
    ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 SJ-OANT/
@@ -95,7 +95,7 @@ SJ-OANT/
 └── README.md                  # This file
 ```
 
-## 🔬 Research Features
+##  Research Features
 
 ### Truth-Maintained Memory (TMM)
 - Multi-tiered memory architecture
@@ -115,7 +115,7 @@ SJ-OANT/
 - Reproducible evaluation pipeline
 - Detailed performance analysis
 
-## 📈 Performance Summary
+##  Performance Summary
 
 | Benchmark | Task Completion | Intent Accuracy | Slot F1 | BLEU Score |
 |-----------|----------------|-----------------|---------|------------|
@@ -124,7 +124,7 @@ SJ-OANT/
 | Taskmaster| 85.00%         | -               | -       | 11.46%     |
 | MultiDoGO | -              | 33.33%          | 70.00%  | -          |
 
-## 🛠️ Development
+##  Development
 
 ### Running Tests
 
@@ -146,13 +146,13 @@ python comprehensive_results_analysis.py
 3. Create test script in `testing/`
 4. Update unified evaluator
 
-## 📚 Documentation
+##  Documentation
 
 - [Methodology](sj-oant/docs/methodology.md)
 - [Benchmark Integration Summaries](sj-oant/docs/)
 - [Project Structure](sj-oant/PROJECT_STRUCTURE.md)
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -160,18 +160,18 @@ python comprehensive_results_analysis.py
 4. Add tests
 5. Submit a pull request
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - MultiWOZ team for the dialogue dataset
 - Google Research for SGD benchmark
 - Taskmaster dataset contributors
 - MultiDoGO evaluation framework
 
-## 📞 Contact
+##  Contact
 
 For questions and collaboration, please open an issue or contact the maintainers.
 
