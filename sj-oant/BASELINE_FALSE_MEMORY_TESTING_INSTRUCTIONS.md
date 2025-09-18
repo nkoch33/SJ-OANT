@@ -1,10 +1,10 @@
 # Baseline False Memory Testing Instructions
 
-## 🎯 Overview
+##  Overview
 
 This document provides complete instructions for setting up baseline testing of open source LLMs against our TMM model on false memory prevention metrics. This is the **core research contribution** - proving that TMM prevents false memory formation better than standard LLMs.
 
-## 🔬 Research Vision Alignment
+##  Research Vision Alignment
 
 ### Our Abstract/Research Vision
 > "Prevent false memory formation in LLMs during long, multi-turn interactions through Truth-Maintained Memory Agent (TMMA) with token-level gating, truth verification, and hierarchical memory system."
@@ -15,7 +15,7 @@ This document provides complete instructions for setting up baseline testing of 
 - **DAR (Disturbance Adaptation Rate)**: How well models handle mixed true/false context
 - **Contradiction Detection**: Advanced pattern matching and semantic analysis
 
-## 🧠 False Memory Testing System
+##  False Memory Testing System
 
 ### How It Works
 1. **Dynamic False Memory Injection**: False facts are injected into user turns during conversation
@@ -29,7 +29,7 @@ This document provides complete instructions for setting up baseline testing of 
 - **Retrieval Filtering**: When generating responses, false memories may be retrieved
 - **Response Analysis**: System checks if responses contain false information
 
-## 📊 False Memory Metrics Explained
+##  False Memory Metrics Explained
 
 ### 1. FMR (False Memory Rate)
 **Formula**: `FMR = (Responses containing false info / Total responses) × 100`
@@ -68,7 +68,7 @@ This document provides complete instructions for setting up baseline testing of 
 - Measures how well a model identifies when new information contradicts existing knowledge
 - Higher is better (more contradictions detected = better false memory prevention)
 
-## 🏗️ Setting Up Baseline False Memory Testing
+##  Setting Up Baseline False Memory Testing
 
 ### Step 1: Create Baseline False Memory Testing Folder
 ```bash
@@ -146,7 +146,7 @@ The baseline testing should produce:
 - **Statistical Analysis**: Significance testing between models on false memory prevention
 - **Visualization**: Charts showing false memory prevention differences
 
-## 📊 Expected Results Format
+##  Expected Results Format
 
 ```json
 {
@@ -179,7 +179,7 @@ The baseline testing should produce:
 }
 ```
 
-## 🎯 Research Hypothesis
+##  Research Hypothesis
 
 **Expected Results**: TMM should significantly outperform all baseline LLMs on false memory prevention metrics:
 - **FMR**: TMM <1% vs Baselines 30-50%
@@ -187,7 +187,7 @@ The baseline testing should produce:
 - **DAR**: TMM 98%+ vs Baselines 15-35%
 - **Contradiction Detection**: TMM 95%+ vs Baselines 10-25%
 
-## ⚠️ Critical Requirements
+##  Critical Requirements
 
 1. **Don't Modify Main Model**: These baselines should NOT affect our TMM model performance
 2. **Use Same False Memories**: Ensure all models are tested with identical false memory injection
@@ -195,7 +195,7 @@ The baseline testing should produce:
 4. **Reproducible**: Set random seeds for consistent false memory injection
 5. **Documentation**: Document all baseline model configurations and false memory injection patterns
 
-## 🚀 How to Test Our TMM Model (Reference)
+##  How to Test Our TMM Model (Reference)
 
 ### Quick False Memory Test (5 scenarios)
 ```bash
@@ -211,7 +211,7 @@ python testing/false_memory_testing.py
 python testing/false_memory_testing.py
 ```
 
-## 🎯 Success Criteria
+##  Success Criteria
 
 The baseline false memory testing is successful when:
 - [ ] All 3 baseline LLMs are tested on 100 conversations per benchmark with false memories
@@ -221,7 +221,7 @@ The baseline false memory testing is successful when:
 - [ ] No impact on main TMM model performance
 - [ ] Research hypothesis is validated: TMM prevents false memories better than standard LLMs
 
-## 🔬 Research Impact
+##  Research Impact
 
 This baseline testing will prove:
 1. **Standard LLMs suffer from false memory formation** (high FMR, slow MEL, low DAR)
