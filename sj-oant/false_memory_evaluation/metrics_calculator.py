@@ -331,8 +331,7 @@ class MetricsCalculator:
         return accuracy
     
     def _contains_false_information(self, response: str, false_fact: str) -> bool:
-        """Check if response contains false information with precise detection."""
-        # More precise false information detection - only direct matches
+        """Check if response contains false information with enhanced precision detection."""
         false_fact_lower = false_fact.lower()
         response_lower = response.lower()
         
@@ -340,26 +339,80 @@ class MetricsCalculator:
         if false_fact_lower in response_lower:
             return True
         
-        # Check for key false facts with specific patterns
+        # Enhanced pattern matching for false facts
         false_patterns = {
-            "cambridge is in scotland": ["cambridge", "scotland"],
-            "the train leaves at 2:15 pm": ["2:15", "pm"],
-            "the hotel costs $200 per night": ["$200", "per night"],
-            "the restaurant closes at 8 pm": ["8 pm", "closes"],
-            "we charge $5 for wifi": ["$5", "wifi"],
-            "the restaurant seats 20 people": ["20 people", "seats"],
-            "the hotel has 2 stars": ["2 stars"],
-            "the airport is 5 miles away": ["5 miles"],
-            "the flight takes 6 hours": ["6 hours"],
-            "it's raining today": ["raining", "today"]
+            "cambridge is in scotland": {
+                "keywords": ["cambridge", "scotland"],
+                "patterns": [r"cambridge.*scotland", r"scotland.*cambridge"],
+                "exclusions": ["england", "not scotland", "not in scotland"]
+            },
+            "the train leaves at 2:15 pm": {
+                "keywords": ["2:15", "pm", "train"],
+                "patterns": [r"2:15.*pm", r"pm.*2:15"],
+                "exclusions": ["3:30", "not 2:15", "actually 3:30"]
+            },
+            "the hotel costs $200 per night": {
+                "keywords": ["$200", "per night", "hotel"],
+                "patterns": [r"\$200.*per night", r"per night.*\$200"],
+                "exclusions": ["$120", "not $200", "actually $120", "correct.*$120", "right.*$120", "should be $120"]
+            },
+            "the restaurant closes at 8 pm": {
+                "keywords": ["8 pm", "closes", "restaurant"],
+                "patterns": [r"8.*pm.*close", r"close.*8.*pm"],
+                "exclusions": ["10 pm", "not 8 pm", "actually 10 pm"]
+            },
+            "we charge $5 for wifi": {
+                "keywords": ["$5", "wifi", "charge"],
+                "patterns": [r"\$5.*wifi", r"wifi.*\$5"],
+                "exclusions": ["free", "not $5", "actually free"]
+            },
+            "the restaurant seats 20 people": {
+                "keywords": ["20 people", "seats", "restaurant"],
+                "patterns": [r"20.*people.*seat", r"seat.*20.*people"],
+                "exclusions": ["50 people", "not 20", "actually 50"]
+            },
+            "the hotel has 2 stars": {
+                "keywords": ["2 stars", "hotel"],
+                "patterns": [r"2.*star", r"star.*2"],
+                "exclusions": ["4 stars", "not 2", "actually 4"]
+            },
+            "the airport is 5 miles away": {
+                "keywords": ["5 miles", "airport"],
+                "patterns": [r"5.*mile", r"mile.*5"],
+                "exclusions": ["15 miles", "not 5", "actually 15"]
+            },
+            "the flight takes 6 hours": {
+                "keywords": ["6 hours", "flight"],
+                "patterns": [r"6.*hour", r"hour.*6"],
+                "exclusions": ["3 hours", "not 6", "actually 3"]
+            },
+            "it's raining today": {
+                "keywords": ["raining", "today"],
+                "patterns": [r"rain.*today", r"today.*rain"],
+                "exclusions": ["sunny", "not raining", "actually sunny"]
+            }
         }
         
         # Check for specific false fact patterns
-        for fact, keywords in false_patterns.items():
+        for fact, pattern_info in false_patterns.items():
             if fact in false_fact_lower:
-                # Only flag if ALL key keywords are present
-                if all(keyword in response_lower for keyword in keywords):
-                    return True
+                # Check exclusions first (corrections) - if any exclusion is present, don't detect as false
+                if any(exclusion in response_lower for exclusion in pattern_info["exclusions"]):
+                    continue
+                
+                # Check if ALL key keywords are present
+                if all(keyword in response_lower for keyword in pattern_info["keywords"]):
+                    # Additional pattern matching for precision
+                    if any(re.search(pattern, response_lower) for pattern in pattern_info["patterns"]):
+                        return True
+        
+        # Check for paraphrased false information
+        if self._is_paraphrased_falsehood(false_fact_lower, response_lower):
+            return True
+        
+        # Check for semantic similarity
+        if self._has_semantic_similarity(false_fact_lower, response_lower):
+            return True
         
         return False
     
