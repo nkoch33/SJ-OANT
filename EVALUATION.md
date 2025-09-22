@@ -1,9 +1,4 @@
 # Evaluation: Truth-Maintained Memory (TMM) Multi-Agent System
-
-## Abstract
-
-This section presents a comprehensive evaluation of the Truth-Maintained Memory (TMM) multi-agent system across two critical dimensions: dialogue performance and false memory prevention. We employ a dual-level evaluation framework that assesses both standard conversational AI capabilities and the novel false memory prevention mechanisms that constitute our primary research contribution.
-
 ## 1. Experimental Setup
 
 ### 1.1 Evaluation Framework Overview
@@ -22,22 +17,16 @@ Our evaluation employs a two-level approach designed to comprehensively assess t
 
 ### 1.2 Baseline Models
 
-We compare our TMM system against three categories of baseline models:
+We compare our TMM system against five baseline models:
 
-**Category 1: Standard LLMs**
+**Standard LLMs**
 - **Llama-2-7B**: Open-source large language model
 - **Mistral-7B**: High-performance open-source model
 - **GPT-3.5-turbo**: Commercial API-based model
 
-**Category 2: Memory-Augmented Systems**
-- **Long-Context LLM**: Standard LLM with extended context window
-- **Simple RAG**: Basic retrieval-augmented generation
-- **Embedding RAG**: Dense vector-based retrieval system
-
-**Category 3: Ablation Baselines**
-- **TMM w/o Truth Filter**: TMM system without TACS filtering
-- **TMM w/o Memory Curation**: TMM system without selective memory policies
-- **TMM Single Agent**: TMM system without multi-agent coordination
+**Memory-Augmented Systems**
+- **Simple RAG**: Basic retrieval-augmented generation with keyword matching
+- **Embedding RAG**: Dense vector-based retrieval system with semantic similarity
 
 ### 1.3 Datasets and Benchmarks
 
@@ -51,20 +40,79 @@ We compare our TMM system against three categories of baseline models:
 - **Contradiction Dataset**: 200 conversations with temporal contradictions
 - **Mixed Context Dataset**: 250 conversations with true/false information mixing
 
-### 1.4 Evaluation Metrics
+### 1.4 Dynamic False Memory Injection System
 
-**Dialogue Performance Metrics**
-- **Response Quality**: BLEU, ROUGE, Semantic Similarity
-- **Task Completion**: Slot F1, Intent Accuracy, Task Understanding
-- **Response Characteristics**: Response Diversity, Response Relevance, Information Accuracy
+Our false memory injection system operates through a sophisticated multi-layer pipeline that dynamically introduces false information during conversation processing. The system employs eight distinct injection types to comprehensively test false memory prevention capabilities:
 
-**False Memory Prevention Metrics**
-- **FMR (False Memory Rate)**: Percentage of responses containing false information
-- **MEL (Memory Edit Latency)**: Time to detect and correct false memories
-- **DAR (Disturbance Adaptation Rate)**: Ability to handle mixed true/false contexts
-- **Contradiction Detection**: Accuracy in identifying conflicting information
+**Injection Types:**
+1. **Direct False Fact Injection**: Explicitly false statements (e.g., "Cambridge is in Scotland")
+2. **Implicit Hallucination Injection**: Subtle false implications embedded in otherwise true statements
+3. **Contradictory Information Injection**: Information that directly contradicts previously established facts
+4. **Temporal Inconsistency Injection**: Time-based contradictions (e.g., changing event times)
+5. **Contextual Distortion Injection**: Misleading context that changes interpretation
+6. **Semantic Paraphrase Injection**: False information disguised as paraphrases of true facts
+7. **Numerical Manipulation Injection**: Incorrect numbers, dates, or quantities
+8. **Causal Distortion Injection**: False cause-effect relationships
 
-### 1.5 Experimental Configuration
+**Injection Process:**
+The system operates by intercepting user turns during conversation processing and selectively injecting false information based on predefined patterns and templates. Each injection is logged with full provenance information, including injection type, confidence level, and evidence. The system maintains a database of known false facts and employs pattern matching to ensure consistent injection across different conversation contexts.
+
+**Visual Figure Description:**
+*Figure 1: Dynamic False Memory Injection Process*
+- A flowchart showing the conversation processing pipeline
+- User input enters the system and is processed by the TMM pipeline
+- At the injection point (between user input and TMM processing), false information is dynamically inserted
+- The injection system shows multiple injection types branching from a central decision node
+- Each injection type leads to modified user input that contains false information
+- The modified input then proceeds through the TMM system for processing
+- Detection and prevention mechanisms are highlighted in the TMM pipeline
+- Results show successful prevention of false memory formation
+
+### 1.5 Evaluation Metrics
+
+#### 1.5.1 Dialogue Performance Metrics
+
+**MultiWOZ 2.4 Metrics:**
+
+**Response Diversity**: Measures lexical richness and variety in generated responses using vocabulary diversity and n-gram coverage. Higher values indicate more diverse and engaging responses.
+
+**Response Relevance**: Evaluates how well responses address user requests using semantic similarity between generated responses and reference responses. Scores range from 0-100%.
+
+**Information Accuracy**: Assesses correctness of factual information provided in responses through automated fact-checking and consistency verification. Scores range from 0-100%.
+
+**Task Understanding**: Measures system comprehension of user goals and task requirements through intent classification accuracy and task completion tracking. Scores range from 0-100%.
+
+**Schema-Guided Dialogue (SGD) Metrics:**
+
+**BLEU Score**: Measures response quality against reference responses using n-gram precision with brevity penalty. Formula: BLEU = BP × exp(Σ(w_n × log(p_n))), where BP is brevity penalty and p_n is n-gram precision.
+
+**Slot F1**: Evaluates accuracy of extracting and filling required information slots. F1 = 2 × (Precision × Recall) / (Precision + Recall), where Precision = Correct Slots / Predicted Slots and Recall = Correct Slots / True Slots.
+
+**Semantic Similarity**: Measures semantic closeness to reference responses using cosine similarity between sentence embeddings. Scores range from 0-1.
+
+**Intent Accuracy**: Evaluates correct identification of user intent through classification accuracy. Formula: Intent Accuracy = Correct Intent Predictions / Total Predictions.
+
+**Taskmaster Metrics:**
+
+**BLEU Score**: Response quality measurement using sacrebleu implementation with standard BLEU-4 scoring.
+
+**ROUGE Score**: Overlap-based response quality metric measuring n-gram overlap between generated and reference responses. ROUGE-L uses longest common subsequence.
+
+**Semantic Similarity**: Semantic alignment with references using sentence transformer embeddings and cosine similarity. Scores range from 0-100%.
+
+**Slot Extraction F1**: Accuracy of extracting task-specific information slots using precision, recall, and F1 calculation.
+
+#### 1.5.2 False Memory Prevention Metrics
+
+**FMR (False Memory Rate)**: Percentage of responses containing false information. Formula: FMR = (Responses with False Information / Total Responses) × 100. Lower values indicate better false memory prevention.
+
+**MEL (Memory Edit Latency)**: Time to detect and correct false memories in seconds. Formula: MEL = Detection Time + Correction Time. Lower values indicate faster correction capabilities.
+
+**DAR (Disturbance Adaptation Rate)**: Ability to handle mixed true/false contexts while maintaining accuracy. Formula: DAR = (Correct Responses in Mixed Context / Total Responses in Mixed Context) × 100. Higher values indicate better adaptation.
+
+**Contradiction Detection Rate**: Accuracy in identifying conflicting information. Formula: CDR = (Detected Contradictions / Total Contradictions) × 100. Higher values indicate better detection capabilities.
+
+### 1.6 Experimental Configuration
 
 **Model Configuration**
 - **TMM System**: Multi-agent pipeline with LangGraph orchestration
@@ -89,70 +137,23 @@ We evaluate dialogue performance across three established benchmarks using stand
 3. **Metric Calculation**: Compute standardized metrics using official frameworks
 4. **Statistical Analysis**: Perform significance testing and confidence interval calculation
 
-### 2.2 Results Overview
+### 2.2 MultiWOZ 2.4 Evaluation
 
-**Table 1: Dialogue Performance Comparison Across Benchmarks**
+MultiWOZ 2.4 provides a comprehensive testbed for multi-domain task-oriented dialogue systems. The dataset contains 10,438 dialogues across 7 domains (restaurant, hotel, attraction, train, taxi, hospital, police) with 115,424 total turns.
 
-| Model | MultiWOZ | | | | SGD | | | | Taskmaster | | | |
-|-------|----------|---|---|---|-----|---|---|---|------------|---|---|---|
-| | BLEU | ROUGE | SemSim | TaskComp | BLEU | SlotF1 | SemSim | IntentAcc | BLEU | ROUGE | SemSim | SlotF1 |
-| **TMM System** | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| Llama-2-7B | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| Mistral-7B | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| GPT-3.5-turbo | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| Long-Context LLM | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| Simple RAG | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| Embedding RAG | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+**Evaluation Methodology**: Each model processes 100 randomly selected conversations from the test set, generating responses for each user turn. Responses are evaluated against reference responses using the four established metrics.
 
-*Note: All values represent mean ± standard deviation across 3 runs. SemSim = Semantic Similarity, TaskComp = Task Completion, IntentAcc = Intent Accuracy*
+### 2.3 Schema-Guided Dialogue (SGD) Evaluation
 
-### 2.3 MultiWOZ 2.4 Results
+SGD offers a challenging evaluation environment with 22,825 conversations across 20 domains and 26 APIs. The dataset emphasizes zero-shot generalization and schema-guided dialogue understanding.
 
-**Table 2: Detailed MultiWOZ 2.4 Performance**
+**Evaluation Methodology**: Models are evaluated on 100 conversations from the test set, with particular emphasis on slot filling accuracy and intent recognition across diverse domains.
 
-| Model | Response Diversity | Response Relevance | Information Accuracy | Task Understanding |
-|-------|-------------------|-------------------|---------------------|-------------------|
-| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+### 2.4 Taskmaster Evaluation
 
-*Note: All metrics on 0-100 scale. Higher values indicate better performance.*
+Taskmaster provides realistic task-oriented dialogues with 13,215 conversations across 6 domains. The dataset includes both human-human and human-machine dialogues, offering diverse interaction patterns.
 
-### 2.4 Schema-Guided Dialogue (SGD) Results
-
-**Table 3: Detailed SGD Performance**
-
-| Model | BLEU | Slot F1 | Semantic Similarity | Intent Accuracy |
-|-------|------|---------|-------------------|-----------------|
-| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-### 2.5 Taskmaster Results
-
-**Table 4: Detailed Taskmaster Performance**
-
-| Model | BLEU | ROUGE | Semantic Similarity | Slot Extraction F1 |
-|-------|------|-------|-------------------|-------------------|
-| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-### 2.6 Statistical Analysis
-
-**Significance Testing**
-- **Paired t-tests**: TMM vs. each baseline model
-- **Effect Size**: Cohen's d for practical significance
-- **Confidence Intervals**: 95% CI for all metric differences
-- **Multiple Comparison Correction**: Bonferroni correction for multiple tests
-
-**Performance Summary**
-- **Competitive Performance**: TMM maintains competitive dialogue performance
-- **Statistical Significance**: [TBD] significant improvements over baselines
-- **Effect Size**: [TBD] small/medium/large effect sizes observed
+**Evaluation Methodology**: Models process 100 conversations from the test set, with evaluation focusing on response quality, semantic similarity, and slot extraction accuracy.
 
 ## 3. False Memory Prevention Evaluation
 
@@ -166,7 +167,72 @@ We evaluate false memory prevention capabilities through dynamic injection testi
 3. **Detection Analysis**: Measure false memory detection and prevention
 4. **Correction Analysis**: Assess speed and accuracy of corrections
 
-### 3.2 False Memory Injection Results
+### 3.2 False Memory Injection Methodology
+
+The dynamic injection system operates by intercepting user turns and selectively introducing false information based on predefined patterns. Each injection is logged with full provenance information, enabling comprehensive analysis of system behavior.
+
+**Injection Types and Patterns**: The system employs eight distinct injection types, each designed to test specific aspects of false memory prevention. Injection patterns are carefully crafted to be realistic and contextually appropriate while maintaining clear falsehood characteristics.
+
+### 3.3 Contradiction Handling Assessment
+
+The system evaluates how well models handle contradictory information by introducing temporal inconsistencies and logical conflicts during conversation processing.
+
+**Contradiction Types**: Temporal contradictions (changing event times), logical conflicts (contradictory statements), and semantic inconsistencies (conflicting interpretations).
+
+## 4. Results
+
+### 4.1 Dialogue Performance Results
+
+**Table 1: Dialogue Performance Comparison Across Benchmarks**
+
+| Model | MultiWOZ | | | | SGD | | | | Taskmaster | | | |
+|-------|----------|---|---|---|-----|---|---|---|------------|---|---|---|
+| | BLEU | ROUGE | SemSim | TaskComp | BLEU | SlotF1 | SemSim | IntentAcc | BLEU | ROUGE | SemSim | SlotF1 |
+| **TMM System** | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| Llama-2-7B | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| Mistral-7B | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| GPT-3.5-turbo | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| Simple RAG | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| Embedding RAG | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+
+*Note: All values represent mean ± standard deviation across 3 runs. SemSim = Semantic Similarity, TaskComp = Task Completion, IntentAcc = Intent Accuracy*
+
+**Table 2: Detailed MultiWOZ 2.4 Performance**
+
+| Model | Response Diversity | Response Relevance | Information Accuracy | Task Understanding |
+|-------|-------------------|-------------------|---------------------|-------------------|
+| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+
+*Note: All metrics on 0-100 scale. Higher values indicate better performance.*
+
+**Table 3: Detailed SGD Performance**
+
+| Model | BLEU | Slot F1 | Semantic Similarity | Intent Accuracy |
+|-------|------|---------|-------------------|-----------------|
+| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+
+**Table 4: Detailed Taskmaster Performance**
+
+| Model | BLEU | ROUGE | Semantic Similarity | Slot Extraction F1 |
+|-------|------|-------|-------------------|-------------------|
+| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+
+### 4.2 False Memory Prevention Results
 
 **Table 5: False Memory Prevention Performance**
 
@@ -176,13 +242,10 @@ We evaluate false memory prevention capabilities through dynamic injection testi
 | Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Long-Context LLM | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 
 *Note: FMR = False Memory Rate (lower is better), MEL = Memory Edit Latency (lower is better), DAR = Disturbance Adaptation Rate (higher is better)*
-
-### 3.3 False Memory Type Analysis
 
 **Table 6: False Memory Prevention by Injection Type**
 
@@ -197,8 +260,6 @@ We evaluate false memory prevention capabilities through dynamic injection testi
 | Numerical Manipulation | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Causal Distortion | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 
-### 3.4 Contradiction Handling Results
-
 **Table 7: Contradiction Detection and Correction Performance**
 
 | Model | Detection Rate (%) | Correction Time (s) | Correction Accuracy (%) | Memory Update Success (%) |
@@ -207,193 +268,30 @@ We evaluate false memory prevention capabilities through dynamic injection testi
 | Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 
-### 3.5 Memory Tier Analysis
+### 4.3 Statistical Analysis
 
-**Table 8: Memory Tier Distribution and Effectiveness**
-
-| Tier | TMM Records (%) | False Memory Rate (%) | Correction Rate (%) | Retention Rate (%) |
-|------|----------------|---------------------|-------------------|------------------|
-| L1 (Working) | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| L2 (Summarized) | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| L3 (Archival) | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| FLAGGED | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-## 4. Ablation Studies
-
-### 4.1 Component Ablation Analysis
-
-**Table 9: Ablation Study Results**
-
-| Configuration | FMR (%) | MEL (s) | DAR (%) | Dialogue Performance |
-|---------------|---------|---------|---------|-------------------|
-| **Full TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| TMM w/o Truth Filter | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| TMM w/o Memory Curation | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| TMM Single Agent | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| TMM w/o False Memory Detection | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-### 4.2 Memory Management Ablation
-
-**Table 10: Memory Management Component Analysis**
-
-| Component | Contribution to FMR Reduction (%) | Contribution to MEL Improvement (%) | Contribution to DAR Improvement (%) |
-|-----------|----------------------------------|-----------------------------------|-----------------------------------|
-| TACS Filter | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Truth Verifier | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Memory Curator | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| False Memory Detection | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Multi-Agent Coordination | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-## 5. Computational Efficiency Analysis
-
-### 5.1 Performance Overhead
-
-**Table 11: Computational Efficiency Comparison**
-
-| Model | Avg Response Time (s) | Memory Usage (MB) | CPU Utilization (%) | Throughput (turns/min) |
-|-------|---------------------|------------------|-------------------|----------------------|
-| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-### 5.2 Scalability Analysis
-
-**Table 12: Scalability Performance**
-
-| Conversation Length | TMM Response Time (s) | Memory Growth (MB) | False Memory Detection Time (s) |
-|-------------------|---------------------|------------------|-------------------------------|
-| 10 turns | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| 50 turns | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| 100 turns | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| 200 turns | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-## 6. Error Analysis
-
-### 6.1 False Memory Analysis
-
-**Table 13: False Memory Error Breakdown**
-
-| Error Type | Frequency (%) | TMM Detection Rate (%) | Baseline Detection Rate (%) |
-|------------|---------------|----------------------|---------------------------|
-| Known False Facts | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Suspicious Patterns | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Contradictions | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Low Confidence | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-### 6.2 Dialogue Performance Analysis
-
-**Table 14: Dialogue Error Analysis**
-
-| Error Category | TMM Error Rate (%) | Baseline Error Rate (%) | Improvement (%) |
-|----------------|-------------------|----------------------|-----------------|
-| Intent Misunderstanding | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Slot Extraction Errors | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Context Loss | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-| Response Irrelevance | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
-
-## 7. Statistical Significance and Effect Sizes
-
-### 7.1 Significance Testing Results
-
-**Table 15: Statistical Significance Summary**
+**Table 8: Statistical Significance Summary**
 
 | Comparison | Metric | t-statistic | p-value | Effect Size (Cohen's d) | 95% CI |
 |------------|--------|-------------|---------|------------------------|--------|
 | TMM vs. Llama-2 | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. Mistral | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. GPT-3.5 | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| TMM vs. Simple RAG | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| TMM vs. Embedding RAG | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. Llama-2 | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. Mistral | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. GPT-3.5 | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| TMM vs. Simple RAG | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| TMM vs. Embedding RAG | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. Llama-2 | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. Mistral | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 | TMM vs. GPT-3.5 | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-
-### 7.2 Effect Size Interpretation
-
-**Effect Size Categories:**
-- **Small Effect**: Cohen's d = 0.2
-- **Medium Effect**: Cohen's d = 0.5  
-- **Large Effect**: Cohen's d = 0.8
-
-**Practical Significance:**
-- **FMR Reduction**: [TBD]% reduction with [TBD] effect size
-- **MEL Improvement**: [TBD]% improvement with [TBD] effect size
-- **DAR Enhancement**: [TBD]% enhancement with [TBD] effect size
-
-## 8. Discussion
-
-### 8.1 Key Findings
-
-**False Memory Prevention**
-- **Significant Improvement**: TMM demonstrates substantial reduction in false memory formation
-- **Rapid Detection**: Immediate identification and flagging of false information
-- **Robust Adaptation**: Excellent performance in mixed true/false contexts
-
-**Dialogue Performance**
-- **Competitive Results**: TMM maintains competitive performance on standard benchmarks
-- **No Performance Degradation**: False memory prevention does not compromise dialogue quality
-- **Consistent Performance**: Stable results across different conversation types
-
-### 8.2 Component Effectiveness
-
-**Most Effective Components**
-1. **False Memory Detection System**: Primary contributor to FMR reduction
-2. **TACS Filter**: Essential for context screening and noise reduction
-3. **Memory Curator**: Critical for proper tier assignment and management
-4. **Multi-Agent Coordination**: Enables seamless information processing
-
-**Ablation Insights**
-- **Truth Filter**: [TBD]% contribution to false memory prevention
-- **Memory Curation**: [TBD]% contribution to memory quality
-- **Multi-Agent Design**: [TBD]% contribution to overall system performance
-
-### 8.3 Limitations and Future Work
-
-**Current Limitations**
-- **Computational Overhead**: [TBD]% increase in response time
-- **Memory Requirements**: [TBD]% increase in memory usage
-- **Scalability**: Performance degradation beyond [TBD] conversation turns
-
-**Future Improvements**
-- **Efficiency Optimization**: Reduce computational overhead
-- **Scalability Enhancement**: Improve long-conversation performance
-- **Advanced Detection**: Enhance false memory detection algorithms
-
-## 9. Conclusion
-
-### 9.1 Summary of Results
-
-**False Memory Prevention**
-- **FMR**: [TBD]% reduction compared to best baseline
-- **MEL**: [TBD]% improvement in correction speed
-- **DAR**: [TBD]% enhancement in adaptation capability
-
-**Dialogue Performance**
-- **MultiWOZ**: [TBD]% performance relative to baselines
-- **SGD**: [TBD]% performance relative to baselines
-- **Taskmaster**: [TBD]% performance relative to baselines
-
-### 9.2 Research Contributions
-
-1. **Novel Architecture**: First multi-agent system for false memory prevention
-2. **Comprehensive Evaluation**: Dual-level evaluation framework
-3. **Significant Improvement**: Substantial reduction in false memory formation
-4. **Practical System**: Production-ready implementation with competitive performance
-
-### 9.3 Impact and Implications
-
-**Research Impact**
-- **New Evaluation Paradigm**: Framework for assessing false memory prevention
-- **Architectural Innovation**: Multi-agent approach to memory management
-- **Performance Validation**: Demonstrated effectiveness in real-world scenarios
-
-**Practical Implications**
-- **Reliable AI Systems**: Foundation for trustworthy conversational AI
-- **Memory Management**: Scalable approach to long-context interactions
-- **Quality Assurance**: Proactive prevention of information corruption
+| TMM vs. Simple RAG | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| TMM vs. Embedding RAG | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
 
 ---
 
