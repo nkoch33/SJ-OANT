@@ -151,10 +151,8 @@ The system operates by intercepting user turns during conversation processing an
 **Evaluation Parameters**
 - **Sample Size**: 100 conversations per benchmark per model
 - **Total Conversations**: 300 per model (100 per benchmark × 3 benchmarks)
-- **Repetitions**: 3 runs per configuration with statistical analysis
-- **Statistical Tests**: Paired t-tests with 95% confidence intervals
-- **Significance Level**: p < 0.05 for all comparisons
-- **Effect Size**: Cohen's d for practical significance assessment
+- **Single Run**: One evaluation run per model per benchmark
+- **Metric Reporting**: Direct metric values with standard deviations
 
 **False Memory Injection Configuration**
 - **Injection Rate**: 1 false memory per conversation
@@ -175,7 +173,7 @@ The system operates by intercepting user turns during conversation processing an
 - **Data Validation**: All conversations validated for completeness
 - **Injection Verification**: Manual spot-checking of false memory injections
 - **Metric Calculation**: Cross-validated using multiple evaluation libraries
-- **Result Auditing**: Independent verification of statistical calculations
+- **Result Auditing**: Independent verification of metric calculations
 - **Error Handling**: Comprehensive error logging and recovery mechanisms
 
 ## 2. Dialogue Performance Evaluation
@@ -188,7 +186,7 @@ We evaluate dialogue performance across three established benchmarks using stand
 1. **Data Preparation**: Load benchmark datasets with proper train/dev/test splits
 2. **Model Inference**: Generate responses for each conversation turn
 3. **Metric Calculation**: Compute standardized metrics using official frameworks
-4. **Statistical Analysis**: Perform significance testing and confidence interval calculation
+4. **Result Reporting**: Direct metric values with standard deviations
 
 ### 2.2 MultiWOZ 2.4 Evaluation
 
@@ -324,27 +322,20 @@ The system evaluates how well models handle contradictory information by introdu
 | Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 | Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
 
-### 4.3 Statistical Analysis
+### 4.3 Performance Summary
 
-**Table 8: Statistical Significance Summary**
+**Table 8: Overall Performance Comparison**
 
-| Comparison | Metric | t-statistic | p-value | Effect Size (Cohen's d) | 95% CI |
-|------------|--------|-------------|---------|------------------------|--------|
-| TMM vs. Llama-2 | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Mistral | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. GPT-3.5 | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Simple RAG | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Embedding RAG | FMR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Llama-2 | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Mistral | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. GPT-3.5 | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Simple RAG | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Embedding RAG | MEL | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Llama-2 | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Mistral | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. GPT-3.5 | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Simple RAG | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
-| TMM vs. Embedding RAG | DAR | [TBD] | [TBD] | [TBD] | [TBD, TBD] |
+| Model | Avg Dialogue Score | Avg FMR (%) | Avg MEL (s) | Avg DAR (%) |
+|-------|-------------------|-------------|-------------|-------------|
+| **TMM System** | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Llama-2-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Mistral-7B | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| GPT-3.5-turbo | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Simple RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+| Embedding RAG | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] | [TBD] ± [TBD] |
+
+*Note: Avg Dialogue Score is the average of all dialogue performance metrics across benchmarks*
 
 ---
 
