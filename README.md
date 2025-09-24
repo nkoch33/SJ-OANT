@@ -145,46 +145,20 @@ python testing/false_memory_testing.py
 # Run both levels for comprehensive evaluation
 ```
 
-## 📈 Research Results
+## 📚 Documentation Index
 
-### TMM Performance Benchmarks
-
-#### Dialogue Performance (Level 1)
-- **MultiWOZ**: Response Diversity 80%+, Response Relevance 75%+, Information Accuracy 80%+, Task Understanding 75%+
-- **SGD**: BLEU 10-15, Slot F1 40-50%, Semantic Similarity 60-70%, Intent Accuracy 85%+
-- **Taskmaster**: BLEU 5-10, ROUGE 5-10, Semantic Similarity 20-30%, Slot Extraction F1 40-50%
-
-#### False Memory Prevention (Level 2)
-- **FMR**: <1% (excellent false memory prevention)
-- **MEL**: 0.00s (immediate detection and correction)
-- **DAR**: 98%+ (excellent adaptation to mixed contexts)
-- **Contradiction Detection**: 95%+ (high accuracy in identifying conflicts)
-
-## 🔬 Research Integrity
-
-### Evaluation Standards
-- **Objective Metrics**: All metrics use mathematical calculations, not subjective assessments
-- **Reproducible**: Identical methodology across all models and benchmarks
-- **Transparent**: Complete source code and evaluation frameworks available
-- **Fair Comparison**: Same datasets, same injection methods, same evaluation criteria
-
-### Baseline Comparison Ready
-The system is prepared for baseline comparison studies:
-- **Dialogue Performance**: Compare TMM vs 3 open source LLMs on standard metrics
-- **False Memory Prevention**: Compare TMM vs 3 open source LLMs on false memory metrics
-- **Instructions**: See `BASELINE_DIALOGUE_TESTING_INSTRUCTIONS.md` and `BASELINE_FALSE_MEMORY_TESTING_INSTRUCTIONS.md`
-
-## 📚 Documentation
-
-### Research Documentation
-- **`docs/methodology.md`** - Detailed research methodology
-- **`evaluation_frameworks/README.md`** - Official benchmark evaluation details
-- **`false_memory_evaluation/README.md`** - False memory testing details
-- **`testing/README.md`** - Comprehensive testing framework guide
-
-### Baseline Testing Instructions
-- **`BASELINE_DIALOGUE_TESTING_INSTRUCTIONS.md`** - Dialogue baseline setup
-- **`BASELINE_FALSE_MEMORY_TESTING_INSTRUCTIONS.md`** - False memory baseline setup
+All detailed documentation has been consolidated under `docs/`:
+- Methodology: `docs/METHODOLOGY.md`
+- Evaluation overview: `docs/EVALUATION.md`
+- Results tables: `docs/RESULTS.md`
+- Discussion/analysis: `docs/DISCUSSION.md`
+- Evaluation frameworks: `docs/README_evaluation_frameworks.md`
+- False memory evaluation: `docs/README_false_memory_evaluation.md`
+- Testing guide: `docs/README_testing.md`
+- Baseline instructions (dialogue): `docs/BASELINE_DIALOGUE_TESTING_INSTRUCTIONS.md`
+- Baseline instructions (false memory): `docs/BASELINE_FALSE_MEMORY_TESTING_INSTRUCTIONS.md`
+- Package readme: `docs/README_package.md`
+- Data notes: `docs/README_data.md`
 
 ## 🎯 Research Impact
 
