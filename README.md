@@ -87,26 +87,41 @@ python testing/false_memory_testing.py
 ```
 SJ-OANT/
 ├── sj-oant/                          # Main codebase
-│   ├── agents/                       # Multi-agent system components
+│   ├── agents/                       # Multi-agent system components (Planner, Coordinator, Responder, etc.)
 │   ├── core/                         # Protocol interfaces and data structures
-│   ├── memory/                       # Hierarchical memory with false memory detection
+│   ├── memory/                       # Four-tier hierarchical memory system (L1, L2, L3, FLAGGED)
 │   ├── truth/                        # Truth verification and TACS filtering
-│   ├── evaluation_frameworks/        # Benchmark evaluation frameworks
-│   ├── false_memory_evaluation/      # False memory prevention evaluation
-│   ├── testing/                      # Testing framework
-│   └── data/                         # Benchmark datasets
-├── docs/                             # Documentation
+│   ├── evaluation_frameworks/        # Benchmark evaluation (MultiWOZ, SGD, Taskmaster)
+│   ├── false_memory_evaluation/      # False memory prevention evaluation and testing
+│   ├── testing/                      # Comprehensive testing framework
+│   ├── data/                         # Benchmark datasets (MultiWOZ, SGD, Taskmaster, MultiDoGO)
+│   ├── monitoring/                   # Research analytics and performance monitoring
+│   ├── multi_agent_pipeline.py       # Main orchestrator using LangGraph
+│   ├── tmm_pipeline.py              # TMMA pipeline implementation
+│   └── requirements.txt              # Python dependencies
+├── docs/                             # Comprehensive documentation
 └── README.md                         # This file
 ```
 
 ## Documentation
 
-Detailed documentation is available in the `docs/` directory:
-- **Methodology**: `docs/METHODOLOGY.md`
-- **Evaluation**: `docs/EVALUATION.md`
-- **Results**: `docs/RESULTS.md`
-- **Discussion**: `docs/DISCUSSION.md`
-- **Testing Guide**: `docs/README_testing.md`
+### Central Documentation (`docs/`)
+- **Methodology**: `docs/METHODOLOGY.md` - Detailed research methodology
+- **Evaluation**: `docs/EVALUATION.md` - Evaluation framework overview
+- **Results**: `docs/RESULTS.md` - Experimental results and analysis
+- **Discussion**: `docs/DISCUSSION.md` - Research discussion and insights
+
+### Component Documentation
+Each major component includes comprehensive documentation:
+- **`sj-oant/agents/README.md`** - Multi-agent system components
+- **`sj-oant/memory/README.md`** - Hierarchical memory system
+- **`sj-oant/truth/README.md`** - Truth verification and filtering
+- **`sj-oant/evaluation_frameworks/README.md`** - Benchmark evaluation
+- **`sj-oant/false_memory_evaluation/README.md`** - False memory prevention
+- **`sj-oant/testing/README.md`** - Testing framework
+- **`sj-oant/data/README.md`** - Benchmark datasets
+- **`sj-oant/core/README.md`** - Core infrastructure
+- **`sj-oant/monitoring/README.md`** - Research analytics
 
 ## Citation
 
